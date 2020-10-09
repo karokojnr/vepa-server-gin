@@ -61,82 +61,79 @@ func PaymentHandler(c *gin.Context) {
 			"payment": &payment,
 		})
 		pID := payment.PaymentID.Hex()
-
-		//--------------------------------------------INITIALIZE STK PUSH-------------------------------------------------//
-		util.Log("GetPushHandler Initialized...")
-		id, _ := primitive.ObjectIDFromHex(userID)
-		filter := bson.M{"_id": id}
-		// Get user to know the USER PHONE NUMBER
-		userCollection, err := util.GetCollection("users")
-		if err != nil {
-			c.JSON(200, gin.H{
-				"message": "Cannot get user collection",
-			})
-			return
-		}
-		var rUser model.User
-		err = userCollection.FindOne(ctx, filter).Decode(&rUser)
-		if err != nil {
-			if err.Error() == "mongo: no documents in result" {
-				log.Println("User not Found!")
-				c.JSON(200, gin.H{
-					"message": "User not Found!",
-				})
-				return
-			}
-		}
-		//Initialize STK Push
-		var (
-			appKey    = util.GoDotEnvVariable("MPESA_APP_KEY")
-			appSecret = util.GoDotEnvVariable("MPESA_APP_SECRET")
-		)
-		svc, err := mpesa.New(appKey, appSecret, mpesa.SANDBOX)
-		if err != nil {
-			log.Println(err)
-		}
-		mres, err := svc.Simulation(mpesa.Express{
-			BusinessShortCode: "174379",
-			Password:          util.GoDotEnvVariable("MPESA_PASSWORD"),
-			Timestamp:         "20200421175555",
-			TransactionType:   "CustomerPayBillOnline",
-			Amount:            1,
-			PartyA:            rUser.PhoneNumber,
-			PartyB:            "174379",
-			PhoneNumber:       rUser.PhoneNumber,
-			CallBackURL:       "https://gin-vepa.herokuapp.com/rcb?id=" + userID + "&paymentid=" + pID, //CallBackHandler
-			AccountReference:  "Vepa",
-			TransactionDesc:   "Vepa Payment",
-		})
-		if err != nil {
-			log.Println("STK Push not sent")
-		}
-
-		var mresMap map[string]interface{}
-		errm := json.Unmarshal([]byte(mres), &mresMap)
-		if errm != nil {
-			log.Println("Error decoding response body")
-		}
-		rCode := mresMap["ResponseCode"]
-		rCodeString := fmt.Sprintf("%v", rCode)
-		rMessage := mresMap["ResponseDescription"]
-		cMessage := mresMap["CustomerMessage"]
-		//log.Println(cMessage)
-		util.Log(cMessage)
-		// Send error message(notification) if rCode != 0
-		if rCodeString == string('0') {
-			//// Proceed to STK Push
-			return
-
-		}
-		rMessageConv := fmt.Sprintf("%v", rMessage)
-		//Send message...
-		util.SendNotifications(rUser.FCMToken, rMessageConv)
-		return
+		//INITIALIZE STK PUSH...
+		GetPushHandler(userID, pID)
 	}
 	c.JSON(403, gin.H{
 		"error": "You are not authorized!!!",
 	})
 	c.Abort()
+	return
+}
+func GetPushHandler(userID string, pID string) {
+	util.Log("GetPushHandler Initialized...")
+	id, _ := primitive.ObjectIDFromHex(userID)
+	filter := bson.M{"_id": id}
+	// Get user to know the USER PHONE NUMBER
+	userCollection, err := util.GetCollection("users")
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+	var rUser model.User
+	err = userCollection.FindOne(context.TODO(), filter).Decode(&rUser)
+	if err != nil {
+		if err.Error() == "mongo: no documents in result" {
+			log.Println("User not Found!")
+			util.Log("User not Found!")
+			return
+		}
+	}
+	//Initialize STK Push
+	var (
+		appKey    = util.GoDotEnvVariable("MPESA_APP_KEY")
+		appSecret = util.GoDotEnvVariable("MPESA_APP_SECRET")
+	)
+	svc, err := mpesa.New(appKey, appSecret, mpesa.SANDBOX)
+	if err != nil {
+		log.Println(err)
+	}
+	mres, err := svc.Simulation(mpesa.Express{
+		BusinessShortCode: "174379",
+		Password:          util.GoDotEnvVariable("MPESA_PASSWORD"),
+		Timestamp:         "20200421175555",
+		TransactionType:   "CustomerPayBillOnline",
+		Amount:            1,
+		PartyA:            rUser.PhoneNumber,
+		PartyB:            "174379",
+		PhoneNumber:       rUser.PhoneNumber,
+		CallBackURL:       "https://gin-vepa.herokuapp.com/rcb?id=" + userID + "&paymentid=" + pID, //CallBackHandler
+		AccountReference:  "Vepa",
+		TransactionDesc:   "Vepa Payment",
+	})
+	if err != nil {
+		log.Println("STK Push not sent")
+	}
+
+	var mresMap map[string]interface{}
+	errm := json.Unmarshal([]byte(mres), &mresMap)
+	if errm != nil {
+		log.Println("Error decoding response body")
+	}
+	rCode := mresMap["ResponseCode"]
+	rCodeString := fmt.Sprintf("%v", rCode)
+	rMessage := mresMap["ResponseDescription"]
+	cMessage := mresMap["CustomerMessage"]
+	util.Log(cMessage)
+	// Send error message(notification) if rCode != 0
+	if rCodeString == string('0') {
+		//// Proceed to STK Push
+		return
+
+	}
+	rMessageConv := fmt.Sprintf("%v", rMessage)
+	//Send message...
+	util.SendNotifications(rUser.FCMToken, rMessageConv)
 	return
 }
 
