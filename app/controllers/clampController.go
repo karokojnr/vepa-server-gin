@@ -190,17 +190,18 @@ func ClearClampFeeHandler(c *gin.Context) {
 	})
 	cID := clampFee.ClampFeeID.Hex()
 	log.Println(cID)
+	//STK Push
+	ClampPushHandler(userID, cID)
 
-	//--------------------------------------------STK Push--------------------------------------------------------------
+}
+func ClampPushHandler(userID string, cID string)  {
 	util.Log("ClampPushHandler Initialized...")
 	id, _ := primitive.ObjectIDFromHex(userID)
 	filter := bson.M{"_id": id}
 	// Get user to know the USER PHONE NUMBER
 	userCollection, err := util.GetCollection("users")
 	if err != nil {
-		c.JSON(200, gin.H{
-			"message": "Cannot get user collection",
-		})
+		log.Fatal(err)
 		return
 	}
 	var rUser model.User
@@ -208,9 +209,6 @@ func ClearClampFeeHandler(c *gin.Context) {
 	if err != nil {
 		if err.Error() == "mongo: no documents in result" {
 			log.Println("User not Found!")
-			c.JSON(200, gin.H{
-				"message": "User not Found!",
-			})
 			return
 		}
 	}
@@ -258,6 +256,7 @@ func ClearClampFeeHandler(c *gin.Context) {
 	//Send message...
 	util.SendNotifications(rUser.FCMToken, rMessageConv)
 	return
+
 }
 
 func ClampCallBackHandler(c *gin.Context) {

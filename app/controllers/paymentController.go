@@ -64,9 +64,7 @@ func PaymentHandler(c *gin.Context) {
 		//INITIALIZE STK PUSH...
 		GetPushHandler(userID, pID)
 	}
-	c.JSON(403, gin.H{
-		"error": "You are not authorized!!!",
-	})
+	util.SendError(c, "You are not authorized!!!")
 	c.Abort()
 	return
 }
