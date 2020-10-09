@@ -100,9 +100,9 @@ func PaymentHandler(c *gin.Context) {
 			Timestamp:         "20200421175555",
 			TransactionType:   "CustomerPayBillOnline",
 			Amount:            1,
-			PartyA:            "254799338805",
+			PartyA:            rUser.PhoneNumber,
 			PartyB:            "174379",
-			PhoneNumber:       "254799338805",
+			PhoneNumber:       rUser.PhoneNumber,
 			CallBackURL:       "https://gin-vepa.herokuapp.com/rcb?id=" + userID + "&paymentid=" + pID, //CallBackHandler
 			AccountReference:  "Vepa",
 			TransactionDesc:   "Vepa Payment",
