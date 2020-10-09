@@ -14,7 +14,6 @@ import (
 	"time"
 )
 
-
 func PaymentHandler(c *gin.Context) {
 	ctx := context.TODO()
 	paymentCollection, err := util.GetCollection("payments")
@@ -94,7 +93,7 @@ func PaymentHandler(c *gin.Context) {
 		PartyA:            rUser.PhoneNumber,
 		PartyB:            "174379",
 		PhoneNumber:       rUser.PhoneNumber,
-		CallBackURL:       "http://34.121.65.106:3500/rcb?id=" + userID + "&paymentid=" + pID, //CallBackHandler
+		CallBackURL:       "https://gin-vepa.herokuapp.com/rcb?id=" + userID + "&paymentid=" + pID, //CallBackHandler
 		AccountReference:  "Vepa",
 		TransactionDesc:   "Vepa Payment",
 	})
@@ -129,6 +128,7 @@ func CallBackHandler(c *gin.Context) {
 	log.Println("Callback called by M-pesa...")
 	util.Log("Callback called by M-pesa...")
 	//var bd interface{}
+	log.Println("--C--")
 	log.Println(c)
 
 }

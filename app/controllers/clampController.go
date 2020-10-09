@@ -161,7 +161,7 @@ func ClampVehicleHandler(c *gin.Context) {
 	return
 }
 
-func ClearClampFee(c *gin.Context) {
+func ClearClampFeeHandler(c *gin.Context) {
 	ctx := context.TODO()
 	clampFeeCollection, err := util.GetCollection("clamps")
 	if err != nil {
@@ -240,7 +240,7 @@ func ClearClampFee(c *gin.Context) {
 		PartyA:            rUser.PhoneNumber,
 		PartyB:            "174379",
 		PhoneNumber:       rUser.PhoneNumber,
-		CallBackURL:       "http://34.121.65.106:3500/clamprcb?id=" + userID + "&paymentID=" + cID, //ClampCallBackHandler
+		CallBackURL:       "https://gin-vepa.herokuapp.com/clamprcb?id=" + userID + "&paymentID=" + cID, //ClampCallBackHandler
 		AccountReference:  "Vepa",
 		TransactionDesc:   "Vepa Payment",
 	})
@@ -267,3 +267,5 @@ func ClearClampFee(c *gin.Context) {
 	util.SendNotifications(rUser.FCMToken, rMessageConv)
 	return
 }
+
+//TODO: Clamp call back handler
