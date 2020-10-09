@@ -77,8 +77,8 @@ func GetVehicleHandler(c *gin.Context) {
 	ctx := context.TODO()
 	vehicleCollection, err := util.GetCollection("vehicles")
 	if err != nil {
-		c.JSON(200, gin.H{
-			"message": "Cannot get vehicle collection",
+		c.JSON(403, gin.H{
+			"error": "Cannot get vehicle collection",
 		})
 		return
 	}
@@ -90,7 +90,7 @@ func GetVehicleHandler(c *gin.Context) {
 
 	if err != nil {
 		c.JSON(200, gin.H{
-			"message": "Error Getting Vehicle",
+			"error": "Error Getting Vehicle",
 		})
 		return
 	}
@@ -109,6 +109,14 @@ func EditVehicleHandler(c *gin.Context) {
 		})
 		return
 	}
+	tokenString := c.GetHeader("Authorization")
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		// Don't forget to validate the alg is what you expect:
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method")
+		}
+		return []byte("secret"), nil
+	})
 
 	vehicle := model.Vehicle{}
 	vehicleID := c.Param("id")
@@ -128,21 +136,36 @@ func EditVehicleHandler(c *gin.Context) {
 		"vehicleClass":       vehicle.VehicleClass,
 	}}
 	var result model.Vehicle
-	err = vehicleCollection.FindOneAndUpdate(ctx, filter, update).Decode(&result)
-	if err != nil {
+	if _, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		err = vehicleCollection.FindOneAndUpdate(ctx, filter, update).Decode(&result)
+		if err != nil {
+			c.JSON(200, gin.H{
+				"message": "Error Updating Vehicle",
+			})
+			return
+		}
+
 		c.JSON(200, gin.H{
-			"message": "Error Updating Vehicle",
+			"message": "Success Updating Vehicle",
+			"vehicle": &vehicle,
 		})
 		return
 	}
-
-	c.JSON(200, gin.H{
-		"message": "Success Updating Vehicle",
-		"vehicle": &vehicle,
+	c.JSON(403, gin.H{
+		"error": "You are not authorized!!!",
 	})
+	c.Abort()
 	return
 }
 func UserVehiclesHandler(c *gin.Context) {
+	tokenString := c.GetHeader("Authorization")
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		// Don't forget to validate the alg is what you expect:
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method")
+		}
+		return []byte("secret"), nil
+	})
 	var results []*model.Vehicle
 	ctx := context.TODO()
 	vehicleCollection, err := util.GetCollection("vehicles")
@@ -153,34 +176,48 @@ func UserVehiclesHandler(c *gin.Context) {
 		return
 	}
 
-	userID := c.Param("id")
-	id, _ := primitive.ObjectIDFromHex(userID)
-	filter := bson.M{"userId": id}
-	cur, err := vehicleCollection.Find(ctx, filter)
-	if err != nil {
-		log.Fatal(err)
-	}
-	for cur.Next(context.TODO()) {
-		var elem model.Vehicle
-		err := cur.Decode(&elem)
+	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		userID := claims["id"].(string)
+		filter := bson.M{"userId": userID}
+		cur, err := vehicleCollection.Find(ctx, filter)
 		if err != nil {
 			log.Fatal(err)
 		}
-		results = append(results, &elem)
-	}
-	if err := cur.Err(); err != nil {
+		for cur.Next(context.TODO()) {
+			var elem model.Vehicle
+			err := cur.Decode(&elem)
+			if err != nil {
+				log.Fatal(err)
+			}
+			results = append(results, &elem)
+		}
+		if err := cur.Err(); err != nil {
+			c.JSON(200, gin.H{
+				"message": err,
+			})
+			return
+		}
+		_ = cur.Close(context.TODO())
 		c.JSON(200, gin.H{
-			"message": err,
+			"vehicles": &results,
 		})
 		return
 	}
-	_ = cur.Close(context.TODO())
-	c.JSON(200, gin.H{
-		"vehicles": &results,
+	c.JSON(403, gin.H{
+		"error": "You are not authorized!!!",
 	})
+	c.Abort()
 	return
 }
 func DeleteVehicleHandler(c *gin.Context) {
+	tokenString := c.GetHeader("Authorization")
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		// Don't forget to validate the alg is what you expect:
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method")
+		}
+		return []byte("secret"), nil
+	})
 	ctx := context.TODO()
 	vehicleCollection, err := util.GetCollection("vehicles")
 	if err != nil {
@@ -191,29 +228,37 @@ func DeleteVehicleHandler(c *gin.Context) {
 	}
 	vehicleID := c.Param("id") // Get Param
 	id, _ := primitive.ObjectIDFromHex(vehicleID)
-	filter := bson.M{"_id": id}
-	var result model.Vehicle
-	err = vehicleCollection.FindOne(ctx, filter).Decode(&result)
-	if err != nil {
-		log.Println(err)
-	}
-	util.Log("Vehicle to be deleted found - ", result.RegistrationNumber)
-	if result.IsClamped == false {
-		deleteResult, err := vehicleCollection.DeleteOne(ctx, filter)
+	if _, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+
+		filter := bson.M{"_id": id}
+		var result model.Vehicle
+		err = vehicleCollection.FindOne(ctx, filter).Decode(&result)
 		if err != nil {
-			fmt.Println(err)
+			log.Println(err)
+		}
+		util.Log("Vehicle to be deleted found - ", result.RegistrationNumber)
+		if result.IsClamped == false {
+			deleteResult, err := vehicleCollection.DeleteOne(ctx, filter)
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+			util.Log("Deleted Vehicle")
+			c.JSON(200, gin.H{
+				"delete result": deleteResult,
+			})
 			return
 		}
-		util.Log("Deleted Vehicle")
+		util.Log("Vehicle Clamped! Deletion not allowed")
 		c.JSON(200, gin.H{
-			"delete result": deleteResult,
+			"message": "clamped",
 		})
 		return
 	}
-	util.Log("Vehicle Clamped! Deletion not allowed")
-	c.JSON(200, gin.H{
-		"message": "clamped",
+	c.JSON(403, gin.H{
+		"error": "You are not authorized!!!",
 	})
+	c.Abort()
 	return
 
 }
