@@ -352,16 +352,12 @@ func VerificationHandler(c *gin.Context) {
 	ctx := context.TODO()
 	paymentCollection, err := util.GetCollection("payments")
 	if err != nil {
-		c.JSON(200, gin.H{
-			"message": "Cannot get payment collection",
-		})
+		util.SendError(c, "Cannot get payment collection")
 		return
 	}
 	vehicleCollection, err := util.GetCollection("vehicles")
 	if err != nil {
-		c.JSON(200, gin.H{
-			"message": "Cannot get vehicle collection",
-		})
+		util.SendError(c, "Cannot get vehicle collection")
 		return
 	}
 	vehicleReg := c.Param("vehicleReg")
@@ -370,9 +366,7 @@ func VerificationHandler(c *gin.Context) {
 	err = vehicleCollection.FindOne(ctx, bson.M{"registrationNumber": vehicleReg}).Decode(&vehicle)
 	if err != nil {
 		if err.Error() == "mongo: no documents in result" {
-			c.JSON(200, gin.H{
-				"message": "notfound",
-			})
+			util.SendError(c, "notfound")
 			return
 		}
 
@@ -393,14 +387,12 @@ func VerificationHandler(c *gin.Context) {
 	err = paymentCollection.FindOne(ctx, filter).Decode(&payment)
 	if err != nil {
 		if err.Error() == "mongo: no documents in result" {
-			c.JSON(200, gin.H{
-				"message": "unpaid",
-			})
+			util.SendError(c, "unpaid")
 			return
 		}
 	}
 	c.JSON(200, gin.H{
-		"payment": &payment,
+		"result": &payment,
 	})
 	return
 }
@@ -408,9 +400,7 @@ func UnpaidVehicleHistoryHandler(c *gin.Context) {
 	ctx := context.TODO()
 	paymentCollection, err := util.GetCollection("payments")
 	if err != nil {
-		c.JSON(200, gin.H{
-			"message": "Cannot get payment collection",
-		})
+		util.SendError(c, "Cannot get payment collection")
 		return
 	}
 	vehicleReg := c.Param("vehicleReg")
@@ -419,9 +409,7 @@ func UnpaidVehicleHistoryHandler(c *gin.Context) {
 	filter := bson.M{"vehicleReg": vehicleReg}
 	cur, err := paymentCollection.Find(ctx, filter)
 	if err != nil {
-		c.JSON(200, gin.H{
-			"message": "Error Getting All Clamped Vehicles",
-		})
+		util.SendError(c, "Error Getting All Clamped Vehicles")
 		return
 
 	}
@@ -438,7 +426,7 @@ func UnpaidVehicleHistoryHandler(c *gin.Context) {
 	}
 	_ = cur.Close(ctx)
 	c.JSON(200, gin.H{
-		"payments": &results,
+		"result": &results,
 	})
 	return
 }

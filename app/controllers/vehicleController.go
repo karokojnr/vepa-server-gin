@@ -77,9 +77,7 @@ func GetVehicleHandler(c *gin.Context) {
 	ctx := context.TODO()
 	vehicleCollection, err := util.GetCollection("vehicles")
 	if err != nil {
-		c.JSON(403, gin.H{
-			"error": "Cannot get vehicle collection",
-		})
+		util.SendError(c, "Cannot get vehicle collection")
 		return
 	}
 
@@ -89,9 +87,7 @@ func GetVehicleHandler(c *gin.Context) {
 	err = vehicleCollection.FindOne(ctx, bson.M{"registrationNumber": vehicleReg}).Decode(&vehicle)
 
 	if err != nil {
-		c.JSON(200, gin.H{
-			"error": "Error Getting Vehicle",
-		})
+		util.SendError(c, "Error Getting Vehicle")
 		return
 	}
 
@@ -267,9 +263,7 @@ func VehiclesWaitingClamp(c *gin.Context) {
 	ctx := context.TODO()
 	vehicleCollection, err := util.GetCollection("vehicles")
 	if err != nil {
-		c.JSON(200, gin.H{
-			"message": "Cannot get vehicle collection",
-		})
+		util.SendError(c, "Cannot get vehicle collection")
 		return
 	}
 	vehicleFilter := bson.M{
@@ -303,9 +297,7 @@ func ClampedVehicle(c *gin.Context) {
 	ctx := context.TODO()
 	vehicleCollection, err := util.GetCollection("vehicles")
 	if err != nil {
-		c.JSON(200, gin.H{
-			"message": "Cannot get vehicle collection",
-		})
+		util.SendError(c, "Cannot get vehicle collection")
 		return
 	}
 	vehicleFilter := bson.M{
@@ -352,10 +344,6 @@ func CheckIfVehicleIsClampedHandler(c *gin.Context) {
 		})
 		return
 	}
-	var error string = "clamped"
-	util.SendError(c, error)
-	//c.JSON(403, gin.H{
-	//	"error": "clamped",
-	//})
+	util.SendError(c, "clamped")
 	return
 }

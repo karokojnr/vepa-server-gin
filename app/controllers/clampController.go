@@ -21,23 +21,17 @@ func ClampVehicleHandler(c *gin.Context) {
 	ctx := context.TODO()
 	paymentCollection, err := util.GetCollection("payments")
 	if err != nil {
-		c.JSON(200, gin.H{
-			"message": "Cannot get clamp fee collection",
-		})
+		util.SendError(c, "Cannot get clamp fee collection")
 		return
 	}
 	userCollection, err := util.GetCollection("users")
 	if err != nil {
-		c.JSON(200, gin.H{
-			"message": "Cannot get vehicle collection",
-		})
+		util.SendError(c, "Cannot get user collection")
 		return
 	}
 	vehicleCollection, err := util.GetCollection("vehicles")
 	if err != nil {
-		c.JSON(200, gin.H{
-			"message": "Cannot get vehicle collection",
-		})
+		util.SendError(c, "Cannot get vehicle collection")
 		return
 	}
 	vehicleReg := c.Param("vehicleReg")
@@ -75,9 +69,7 @@ func ClampVehicleHandler(c *gin.Context) {
 	err = vehicleCollection.FindOne(ctx, bson.M{"registrationNumber": vehicleReg}).Decode(&vehicleModel)
 	if vehicleModel.IsWaitingClamp == true || vehicleModel.IsClamped == true {
 		util.Log("vehicle is already  clamped")
-		c.JSON(200, gin.H{
-			"message": "vehicle is already clamped",
-		})
+		util.SendError(c, "vehicle is already clamped")
 		return
 	}
 	//Send SMS - REPLACE Recipient and Message with REAL Values
@@ -96,9 +88,7 @@ func ClampVehicleHandler(c *gin.Context) {
 		if err != nil {
 			util.Log("Error updating payment:", err.Error())
 			fmt.Printf("error...")
-			c.JSON(200, gin.H{
-				"message": "Error Updating Vehicle",
-			})
+			util.SendError(c, "Error Updating Vehicle")
 			return
 		}
 		util.Log("isWaitingClamp == true")
@@ -131,9 +121,7 @@ func ClampVehicleHandler(c *gin.Context) {
 			if err != nil {
 				util.Log("Error fetching payment:", err.Error())
 				fmt.Printf("error...")
-				c.JSON(200, gin.H{
-					"message": "Error Updating Vehicle",
-				})
+				util.SendError(c, "Error Updating Vehicle")
 				return
 			}
 			util.Log("isClamped == true")
@@ -370,7 +358,6 @@ func ClampCallBackHandler(c *gin.Context) {
 			"message": "Payment Updated",
 			"payment": clampPaymentModel,
 		})
-
 
 		//Set isClamped == false
 		util.Log("Vehicle Reg - ", clampPaymentModel.VehicleReg)
