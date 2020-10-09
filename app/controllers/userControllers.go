@@ -17,17 +17,13 @@ func RegisterHandler(c *gin.Context) {
 	userCollection, err := util.GetCollection("users")
 
 	if err != nil {
-		c.JSON(200, gin.H{
-			"error": "Cannot get user collection",
-		})
+		util.SendError(c, "Cannot get user collection")
 		return
 	}
 	user := model.User{}
 	err = c.Bind(&user)
 	if err != nil {
-		c.JSON(200, gin.H{
-			"error": "Error Getting Body",
-		})
+		util.SendError(c, "Error Getting Body")
 		return
 	}
 
@@ -38,10 +34,7 @@ func RegisterHandler(c *gin.Context) {
 		hash, err := bcrypt.GenerateFromPassword([]byte(user.Password), 5)
 
 		if err != nil {
-
-			c.JSON(200, gin.H{
-				"error": "Error While Hashing Password, Try Again Later",
-			})
+			util.SendError(c, "Error While Hashing Password, Try Again Later")
 			return
 		}
 		user.Password = string(hash)
@@ -49,9 +42,7 @@ func RegisterHandler(c *gin.Context) {
 		_, err = userCollection.InsertOne(ctx, &user)
 
 		if err != nil {
-			c.JSON(403, gin.H{
-				"error": "Error Inserting User",
-			})
+			util.SendError(c, "Error Inserting User")
 			c.Abort()
 			return
 		}
@@ -66,7 +57,7 @@ func RegisterHandler(c *gin.Context) {
 		fmt.Println("Expires in ... seconds: ")
 		fmt.Println(exp)
 		if err != nil {
-			c.JSON(403, gin.H{"error": "Error while generating token,Try again"})
+			util.SendError(c, "Error while generating token,Try again")
 			c.Abort()
 			return
 		}
@@ -76,12 +67,12 @@ func RegisterHandler(c *gin.Context) {
 		user.Exp = exp
 
 		c.JSON(200, gin.H{
-			"message": "Success Insertting User",
+			"message": "Success Inserting User",
 			"user":    &user,
 		})
 		return
 	}
-	c.JSON(403, gin.H{"error": "Email already exists!!!"})
+	util.SendError(c, "Email already exists!!!")
 	c.Abort()
 	return
 }
@@ -90,29 +81,27 @@ func LoginHandler(c *gin.Context) {
 	userCollection, err := util.GetCollection("users")
 
 	if err != nil {
-		c.JSON(200, gin.H{
-			"error": "Cannot get user collection",
-		})
+		util.SendError(c, "Cannot get user collection")
 		return
 	}
 	user := model.User{}
 	err = c.Bind(&user)
+
 	if err != nil {
-		c.JSON(200, gin.H{
-			"error": "Error Get Body",
-		})
+		util.SendError(c, "Error Getting Body")
 		return
 	}
 	var result model.User
 	err = userCollection.FindOne(ctx, bson.M{"email": user.Email}).Decode(&result)
 	if err != nil {
-		c.JSON(404, gin.H{"error": "User account was not found"})
+
+		util.SendError(c, "User account was not found")
 		c.Abort()
 		return
 	}
 	err = bcrypt.CompareHashAndPassword([]byte(result.Password), []byte(user.Password))
 	if err != nil {
-		c.JSON(404, gin.H{"error": "Invalid password"})
+		util.SendError(c, "Invalid password")
 		c.Abort()
 		return
 	}
@@ -126,7 +115,7 @@ func LoginHandler(c *gin.Context) {
 	fmt.Println("Expires in ... seconds: ")
 	fmt.Println(exp)
 	if err != nil {
-		c.JSON(404, gin.H{"error": "Error while generating token"})
+		util.SendError(c, "Error while generating token")
 		c.Abort()
 		return
 	}
@@ -145,9 +134,8 @@ func ProfileHandler(c *gin.Context) {
 	userCollection, err := util.GetCollection("users")
 
 	if err != nil {
-		c.JSON(200, gin.H{
-			"message": "Cannot get user collection",
-		})
+		util.SendError(c, "Cannot get user collection")
+		c.Abort()
 		return
 	}
 
@@ -165,9 +153,8 @@ func ProfileHandler(c *gin.Context) {
 	if _, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 		err = userCollection.FindOne(ctx, bson.M{"_id": id}).Decode(&user)
 		if err != nil {
-			c.JSON(200, gin.H{
-				"message": "Error Getting User",
-			})
+			util.SendError(c, "Error Getting User")
+			c.Abort()
 			return
 		}
 		c.JSON(200, gin.H{
@@ -175,9 +162,8 @@ func ProfileHandler(c *gin.Context) {
 		})
 		return
 	}
-	c.JSON(403, gin.H{
-		"error": "You are not Authorized!",
-	})
+	util.SendError(c, "You are not Authorized!")
+	c.Abort()
 	return
 }
 func EditProfile(c *gin.Context) {
@@ -185,9 +171,7 @@ func EditProfile(c *gin.Context) {
 	userCollection, err := util.GetCollection("users")
 
 	if err != nil {
-		c.JSON(200, gin.H{
-			"message": "Cannot get user collection",
-		})
+		util.SendError(c, "Cannot get user collection")
 		return
 	}
 	tokenString := c.GetHeader("Authorization")
@@ -204,9 +188,7 @@ func EditProfile(c *gin.Context) {
 		user := model.User{}
 		err = c.Bind(&user)
 		if err != nil {
-			c.JSON(200, gin.H{
-				"message": "Error Getting Body",
-			})
+			util.SendError(c, "Error Getting Body")
 			return
 		}
 		update := bson.M{"$set": bson.M{
@@ -219,9 +201,7 @@ func EditProfile(c *gin.Context) {
 		var result model.User
 		err = userCollection.FindOneAndUpdate(ctx, bson.M{"_id": userID}, update).Decode(&result)
 		if err != nil {
-			c.JSON(200, gin.H{
-				"error": "Error Updating User",
-			})
+			util.SendError(c, "Error Updating User")
 			return
 		}
 
@@ -231,9 +211,7 @@ func EditProfile(c *gin.Context) {
 		})
 		return
 	}
-	c.JSON(403, gin.H{
-		"error": "You are not Authorized!",
-	})
+	util.SendError(c, "You are not Authorized!")
 	return
 }
 func FCMTokenHandler(c *gin.Context) {
@@ -241,9 +219,7 @@ func FCMTokenHandler(c *gin.Context) {
 	userCollection, err := util.GetCollection("users")
 
 	if err != nil {
-		c.JSON(200, gin.H{
-			"message": "Cannot get user collection",
-		})
+		util.SendError(c, "Cannot get user collection")
 		return
 	}
 
@@ -253,18 +229,14 @@ func FCMTokenHandler(c *gin.Context) {
 	err = c.Bind(&user)
 
 	if err != nil {
-		c.JSON(200, gin.H{
-			"message": "Error Getting Body",
-		})
+		util.SendError(c, "Error Getting Body")
 		return
 	}
 	filter := bson.M{"_id": id}
 	update := bson.M{"$set": bson.M{"fcmtoken": user.FCMToken}}
 	_, err = userCollection.UpdateOne(ctx, filter, update)
 	if err != nil {
-		c.JSON(200, gin.H{
-			"message": "Error Updating FCMToken",
-		})
+		util.SendError(c, "Error Updating FCMToken")
 		return
 	}
 

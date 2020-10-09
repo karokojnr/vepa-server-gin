@@ -28,17 +28,13 @@ func PaymentHandler(c *gin.Context) {
 	ctx := context.TODO()
 	paymentCollection, err := util.GetCollection("payments")
 	if err != nil {
-		c.JSON(200, gin.H{
-			"message": "Cannot get payment collection",
-		})
+		util.SendError(c, "Cannot get payment collection")
 		return
 	}
 	var payment model.Payment
 	err = c.Bind(&payment)
 	if err != nil {
-		c.JSON(200, gin.H{
-			"message": "Error Getting Body",
-		})
+		util.SendError(c, "Error Getting Body")
 		c.Abort()
 		return
 	}
@@ -49,9 +45,7 @@ func PaymentHandler(c *gin.Context) {
 		payment.PaymentID = primitive.NewObjectID()
 		_, err = paymentCollection.InsertOne(ctx, payment)
 		if err != nil {
-			c.JSON(403, gin.H{
-				"message": "Error Inserting Payment",
-			})
+			util.SendError(c, "Error Inserting Payment")
 			c.Abort()
 			return
 		}
@@ -143,9 +137,7 @@ func CallBackHandler(c *gin.Context) {
 	userCollection, err := util.GetCollection("users")
 
 	if err != nil {
-		c.JSON(200, gin.H{
-			"message": "Cannot get user collection",
-		})
+		util.SendError(c, "Cannot get user collection")
 		return
 	}
 	var bd interface{}
@@ -169,11 +161,11 @@ func CallBackHandler(c *gin.Context) {
 	if err != nil {
 		util.Log("Error fetching user:", err.Error())
 		if err.Error() == "mongo: no documents in result" {
-			c.JSON(404, gin.H{"message": "User account was not found"})
+			util.SendError(c, "User account was not found")
 			c.Abort()
 			return
 		}
-		c.JSON(404, gin.H{"message": "Error fetching user doc"})
+		util.SendError(c, "Error fetching user doc")
 		c.Abort()
 		return
 	}
@@ -277,9 +269,7 @@ func UserPaymentsHandler(c *gin.Context) {
 	ctx := context.TODO()
 	paymentCollection, err := util.GetCollection("payments")
 	if err != nil {
-		c.JSON(200, gin.H{
-			"message": "Cannot get payment collection",
-		})
+		util.SendError(c, "Cannot get payment collection")
 		return
 	}
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
@@ -307,9 +297,7 @@ func UserPaymentsHandler(c *gin.Context) {
 		})
 		return
 	}
-	c.JSON(403, gin.H{
-		"error": "You are not authorized!!!",
-	})
+	util.SendError(c, "You are not authorized!!!")
 	c.Abort()
 	return
 }
@@ -317,9 +305,7 @@ func GetPaidDays(c *gin.Context) {
 	ctx := context.TODO()
 	paymentCollection, err := util.GetCollection("payments")
 	if err != nil {
-		c.JSON(200, gin.H{
-			"message": "Cannot get payment collection",
-		})
+		util.SendError(c, "Cannot get payment collection")
 		return
 	}
 	vehicleReg := c.Param("vehicleReg")

@@ -157,17 +157,13 @@ func ClearClampFeeHandler(c *gin.Context) {
 	ctx := context.TODO()
 	clampFeeCollection, err := util.GetCollection("clamps")
 	if err != nil {
-		c.JSON(200, gin.H{
-			"message": "Cannot get clamp fee collection",
-		})
+		util.SendError(c, "Cannot get clamp fee collection")
 		return
 	}
 	var clampFee model.ClampFee
 	err = c.Bind(&clampFee)
 	if err != nil {
-		c.JSON(200, gin.H{
-			"message": "Error Getting Body",
-		})
+		util.SendError(c, "Error Getting Body")
 		c.Abort()
 		return
 	}
@@ -177,9 +173,7 @@ func ClearClampFeeHandler(c *gin.Context) {
 	clampFee.ClampFeeID = primitive.NewObjectID()
 	_, err = clampFeeCollection.InsertOne(ctx, clampFee)
 	if err != nil {
-		c.JSON(403, gin.H{
-			"message": "Error Inserting Clamp Fee Payment",
-		})
+		util.SendError(c, "Error Inserting Clamp Fee Payment")
 		c.Abort()
 		return
 	}
@@ -194,7 +188,7 @@ func ClearClampFeeHandler(c *gin.Context) {
 	ClampPushHandler(userID, cID)
 
 }
-func ClampPushHandler(userID string, cID string)  {
+func ClampPushHandler(userID string, cID string) {
 	util.Log("ClampPushHandler Initialized...")
 	id, _ := primitive.ObjectIDFromHex(userID)
 	filter := bson.M{"_id": id}
@@ -289,11 +283,11 @@ func ClampCallBackHandler(c *gin.Context) {
 	if err != nil {
 		util.Log("Error fetching user:", err.Error())
 		if err.Error() == "mongo: no documents in result" {
-			c.JSON(404, gin.H{"message": "User account was not found"})
+			util.SendError(c, "User account was not found")
 			c.Abort()
 			return
 		}
-		c.JSON(404, gin.H{"message": "Error fetching user doc"})
+		util.SendError(c, "Error fetching user doc")
 		c.Abort()
 		return
 	}
@@ -343,8 +337,8 @@ func ClampCallBackHandler(c *gin.Context) {
 			"resultDesc":         resultDesc,
 			"transactionDate":    transactionDate,
 			"phoneNumber":        phoneNumber,
-			"checkoutRequestID": checkoutRequestID,
-			"isSuccessful":      true,
+			"checkoutRequestID":  checkoutRequestID,
+			"isSuccessful":       true,
 		}}
 		err = clampFeeCollection.FindOneAndUpdate(context.TODO(), clampPaymentFilter, clampPaymentUpdate).Decode(&clampPaymentModel)
 		if err != nil {

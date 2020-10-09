@@ -16,9 +16,7 @@ func AddVehicleHandler(c *gin.Context) {
 	ctx := context.TODO()
 	vehicleCollection, err := util.GetCollection("vehicles")
 	if err != nil {
-		c.JSON(200, gin.H{
-			"message": "Cannot get vehicle collection",
-		})
+		util.SendError(c, "Cannot get vehicle collection")
 		return
 	}
 	vehicle := model.Vehicle{}
@@ -32,9 +30,7 @@ func AddVehicleHandler(c *gin.Context) {
 	})
 	err = c.Bind(&vehicle)
 	if err != nil {
-		c.JSON(200, gin.H{
-			"message": "Error getting body",
-		})
+		util.SendError(c, "Error getting body")
 		return
 	}
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
@@ -48,9 +44,7 @@ func AddVehicleHandler(c *gin.Context) {
 			if err.Error() == "mongo: no documents in result" {
 				_, err = vehicleCollection.InsertOne(ctx, vehicle)
 				if err != nil {
-					c.JSON(403, gin.H{
-						"message": "Error Insert Vehicle",
-					})
+					util.SendError(c, "Error Insert Vehicle")
 					c.Abort()
 					return
 				}
@@ -61,15 +55,11 @@ func AddVehicleHandler(c *gin.Context) {
 				return
 			}
 		}
-		c.JSON(403, gin.H{
-			"message": "Vehicle Already Exists",
-		})
+		util.SendError(c, "Vehicle Already Exists")
 		c.Abort()
 		return
 	}
-	c.JSON(403, gin.H{
-		"error": "You are not authorized!!!",
-	})
+	util.SendError(c, "You are not authorized!!!")
 	c.Abort()
 	return
 }
@@ -100,9 +90,7 @@ func EditVehicleHandler(c *gin.Context) {
 	ctx := context.TODO()
 	vehicleCollection, err := util.GetCollection("vehicles")
 	if err != nil {
-		c.JSON(200, gin.H{
-			"message": "Cannot get vehicle collection",
-		})
+		util.SendError(c, "Cannot get vehicle collection")
 		return
 	}
 	tokenString := c.GetHeader("Authorization")
@@ -120,9 +108,7 @@ func EditVehicleHandler(c *gin.Context) {
 	err = c.Bind(&vehicle)
 
 	if err != nil {
-		c.JSON(200, gin.H{
-			"message": "Error Getting Body",
-		})
+		util.SendError(c, "Error Getting Body")
 		return
 	}
 	vehicle.VeicleID = id
@@ -135,9 +121,7 @@ func EditVehicleHandler(c *gin.Context) {
 	if _, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 		err = vehicleCollection.FindOneAndUpdate(ctx, filter, update).Decode(&result)
 		if err != nil {
-			c.JSON(200, gin.H{
-				"message": "Error Updating Vehicle",
-			})
+			util.SendError(c, "Error Updating Vehicle")
 			return
 		}
 
@@ -147,9 +131,7 @@ func EditVehicleHandler(c *gin.Context) {
 		})
 		return
 	}
-	c.JSON(403, gin.H{
-		"error": "You are not authorized!!!",
-	})
+	util.SendError(c, "You are not authorized!!!")
 	c.Abort()
 	return
 }
@@ -166,9 +148,7 @@ func UserVehiclesHandler(c *gin.Context) {
 	ctx := context.TODO()
 	vehicleCollection, err := util.GetCollection("vehicles")
 	if err != nil {
-		c.JSON(200, gin.H{
-			"message": "Cannot get vehicle collection",
-		})
+		util.SendError(c, "Cannot get vehicle collection")
 		return
 	}
 
@@ -188,9 +168,7 @@ func UserVehiclesHandler(c *gin.Context) {
 			results = append(results, &elem)
 		}
 		if err := cur.Err(); err != nil {
-			c.JSON(200, gin.H{
-				"message": err,
-			})
+			util.SendError(c, "Error!")
 			return
 		}
 		_ = cur.Close(context.TODO())
@@ -199,9 +177,7 @@ func UserVehiclesHandler(c *gin.Context) {
 		})
 		return
 	}
-	c.JSON(403, gin.H{
-		"error": "You are not authorized!!!",
-	})
+	util.SendError(c, "You are not authorized!!!")
 	c.Abort()
 	return
 }
@@ -217,9 +193,7 @@ func DeleteVehicleHandler(c *gin.Context) {
 	ctx := context.TODO()
 	vehicleCollection, err := util.GetCollection("vehicles")
 	if err != nil {
-		c.JSON(200, gin.H{
-			"message": "Cannot get vehicle collection",
-		})
+		util.SendError(c, "Cannot get vehicle collection")
 		return
 	}
 	vehicleID := c.Param("id") // Get Param
@@ -251,9 +225,7 @@ func DeleteVehicleHandler(c *gin.Context) {
 		})
 		return
 	}
-	c.JSON(403, gin.H{
-		"error": "You are not authorized!!!",
-	})
+	util.SendError(c, "You are not authorized!!!")
 	c.Abort()
 	return
 
@@ -329,9 +301,7 @@ func CheckIfVehicleIsClampedHandler(c *gin.Context) {
 	ctx := context.TODO()
 	vehicleCollection, err := util.GetCollection("vehicles")
 	if err != nil {
-		c.JSON(200, gin.H{
-			"error": "Cannot get vehicle collection",
-		})
+		util.SendError(c, "Cannot get vehicle collection")
 		return
 	}
 	vehicleReg := c.Param("vehicleReg")
