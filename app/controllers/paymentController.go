@@ -10,6 +10,7 @@ import (
 	"github.com/karokojnr/vepa-server-gin/app/util"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"io/ioutil"
 	"log"
 	"time"
 )
@@ -129,11 +130,21 @@ func CallBackHandler(c *gin.Context) {
 	util.Log("Callback called by M-pesa...")
 	log.Println("req body")
 	util.Log(c.Request.Body)
-
+	var bd interface{}
+	rbody := c.Request.Body
+	body, err := ioutil.ReadAll(rbody)
+	err = json.Unmarshal(body, &bd)
 	util.Log("Reading request body...")
-	//var bd interface{}
-	log.Println("--C--")
-	log.Println(c)
+	if err != nil {
+		log.Println("Error")
+		util.Log("Error parsing request:", err)
+		return
+	}
+	resultCode := bd.(map[string]interface{})["Body"].(map[string]interface{})["stkCallback"].(map[string]interface{})["ResultCode"]
+	rBody := bd.(map[string]interface{})["Body"].(map[string]interface{})["stkCallback"].(map[string]interface{})["ResultDesc"]
+	checkoutRequestID := bd.(map[string]interface{})["Body"].(map[string]interface{})["stkCallback"].(map[string]interface{})["CheckoutRequestID"]
+	util.Log("Printing c.Request.Body")
+	util.Log("Result code:", resultCode, " Result Body:", rBody, " checkoutRequestID:", checkoutRequestID)
 
 }
 func UserPaymentsHandler(c *gin.Context) {
