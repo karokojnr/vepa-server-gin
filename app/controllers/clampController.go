@@ -111,23 +111,26 @@ func ClampVehicleHandler(c *gin.Context) {
 	err = paymentCollection.FindOne(ctx, paymentFilter).Decode(&paymentModel)
 	if err != nil {
 		log.Println(err)
-		if vehicleModel.IsClamped == false {
-			vehicleClampFilter := bson.M{"_id": vID}
-			vehicleClampUpdate := bson.M{"$set": bson.M{
-				"isClamped":      true,
-				"isWaitingClamp": false,
-			}}
-			err = vehicleCollection.FindOneAndUpdate(context.TODO(), vehicleClampFilter, vehicleClampUpdate).Decode(&vehicleModel)
-			if err != nil {
-				util.Log("Error fetching payment:", err.Error())
-				fmt.Printf("error...")
-				util.SendError(c, "Error Updating Vehicle")
+		if err.Error() == "mongo: no documents in result" {
+			if vehicleModel.IsClamped == false {
+				vehicleClampFilter := bson.M{"_id": vID}
+				vehicleClampUpdate := bson.M{"$set": bson.M{
+					"isClamped":      true,
+					"isWaitingClamp": false,
+				}}
+				err = vehicleCollection.FindOneAndUpdate(context.TODO(), vehicleClampFilter, vehicleClampUpdate).Decode(&vehicleModel)
+				if err != nil {
+					util.Log("Error fetching payment:", err.Error())
+					fmt.Printf("error...")
+					util.SendError(c, "Error Updating Vehicle")
+					return
+				}
+				util.Log("isClamped == true")
+				c.JSON(200, gin.H{
+					"message": "isClamped updated Successfully --> true",
+				})
 				return
 			}
-			util.Log("isClamped == true")
-			c.JSON(200, gin.H{
-				"message": "isClamped updated Successfully --> true",
-			})
 
 		}
 	}
