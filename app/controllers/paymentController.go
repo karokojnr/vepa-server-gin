@@ -10,7 +10,9 @@ import (
 	"github.com/karokojnr/vepa-server-gin/app/util"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"io/ioutil"
 	"log"
+	"net/http"
 	"time"
 )
 
@@ -124,9 +126,28 @@ func PaymentHandler(c *gin.Context) {
 	return
 }
 
-func CallBackHandler(c *gin.Context) {
+func CallBackHandler(c *gin.Context, r *http.Request) {
 	log.Println("Callback called by M-pesa...")
 	util.Log("Callback called by M-pesa...")
+	var bd interface{}
+	rbody := r.Body
+	body, err := ioutil.ReadAll(rbody)
+	err = json.Unmarshal(body, &bd)
+	resultCode := bd.(map[string]interface{})["Body"].(map[string]interface{})["stkCallback"].(map[string]interface{})["ResultCode"]
+	log.Println("Result code")
+	log.Println(resultCode)
+	rBody := bd.(map[string]interface{})["Body"].(map[string]interface{})["stkCallback"].(map[string]interface{})["ResultDesc"]
+	util.Log("Result code:", resultCode, " Result Body:", rBody)
+	log.Println("Result code:", resultCode, " Result Body:", rBody)
+
+	util.Log("Reading request body...")
+	if err != nil {
+		log.Println("Error")
+		util.Log("Error parsing request:", err.Error())
+		//res.Result = "Unable to read request"
+		//json.NewEncoder(w).Encode(res)
+		return
+	}
 	//var bd interface{}
 	log.Println("--C--")
 	log.Println(c)
