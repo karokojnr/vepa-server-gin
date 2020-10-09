@@ -366,7 +366,9 @@ func VerificationHandler(c *gin.Context) {
 	err = vehicleCollection.FindOne(ctx, bson.M{"registrationNumber": vehicleReg}).Decode(&vehicle)
 	if err != nil {
 		if err.Error() == "mongo: no documents in result" {
-			util.SendError(c, "notfound")
+			c.JSON(200, gin.H{
+				"result": "notfound",
+			})
 			return
 		}
 
@@ -387,13 +389,13 @@ func VerificationHandler(c *gin.Context) {
 	err = paymentCollection.FindOne(ctx, filter).Decode(&payment)
 	if err != nil {
 		if err.Error() == "mongo: no documents in result" {
-			util.SendError(c, "unpaid")
+			c.JSON(200, gin.H{
+				"result": "unpaid",
+			})
 			return
 		}
 	}
-	c.JSON(200, gin.H{
-		"result": &payment,
-	})
+	c.JSON(200, &payment)
 	return
 }
 func UnpaidVehicleHistoryHandler(c *gin.Context) {
