@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/AndroidStudyOpenSource/mpesa-api-go"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
 	model "github.com/karokojnr/vepa-server-gin/app/models"
 	"github.com/karokojnr/vepa-server-gin/app/util"
@@ -16,6 +17,14 @@ import (
 )
 
 func PaymentHandler(c *gin.Context) {
+	tokenString := c.GetHeader("Authorization")
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		// Don't forget to validate the alg is what you expect:
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method")
+		}
+		return []byte("secret"), nil
+	})
 	ctx := context.TODO()
 	paymentCollection, err := util.GetCollection("payments")
 	if err != nil {
@@ -25,8 +34,6 @@ func PaymentHandler(c *gin.Context) {
 		return
 	}
 	var payment model.Payment
-	userID := c.Param("id")
-	//id, _ := primitive.ObjectIDFromHex(userID)
 	err = c.Bind(&payment)
 	if err != nil {
 		c.JSON(200, gin.H{
@@ -35,93 +42,101 @@ func PaymentHandler(c *gin.Context) {
 		c.Abort()
 		return
 	}
-	payment.UserID = userID
-	payment.IsSuccessful = false
-	payment.PaymentID = primitive.NewObjectID()
-	_, err = paymentCollection.InsertOne(ctx, payment)
-	if err != nil {
-		c.JSON(403, gin.H{
-			"message": "Error Inserting Payment",
-		})
-		c.Abort()
-		return
-	}
-	util.Log("Payment added successfully..")
-	c.JSON(200, gin.H{
-		"message": "Payment added successfully..",
-		"payment": &payment,
-	})
-	pID := payment.PaymentID.Hex()
-
-	//--------------------------------------------INITIALIZE STK PUSH-------------------------------------------------//
-	util.Log("GetPushHandler Initialized...")
-	id, _ := primitive.ObjectIDFromHex(userID)
-	filter := bson.M{"_id": id}
-	// Get user to know the USER PHONE NUMBER
-	userCollection, err := util.GetCollection("users")
-	if err != nil {
+	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		userID := claims["id"].(string)
+		payment.UserID = userID
+		payment.IsSuccessful = false
+		payment.PaymentID = primitive.NewObjectID()
+		_, err = paymentCollection.InsertOne(ctx, payment)
+		if err != nil {
+			c.JSON(403, gin.H{
+				"message": "Error Inserting Payment",
+			})
+			c.Abort()
+			return
+		}
+		util.Log("Payment added successfully..")
 		c.JSON(200, gin.H{
-			"message": "Cannot get user collection",
+			"message": "Payment added successfully..",
+			"payment": &payment,
 		})
-		return
-	}
-	var rUser model.User
-	err = userCollection.FindOne(ctx, filter).Decode(&rUser)
-	if err != nil {
-		if err.Error() == "mongo: no documents in result" {
-			log.Println("User not Found!")
+		pID := payment.PaymentID.Hex()
+
+		//--------------------------------------------INITIALIZE STK PUSH-------------------------------------------------//
+		util.Log("GetPushHandler Initialized...")
+		id, _ := primitive.ObjectIDFromHex(userID)
+		filter := bson.M{"_id": id}
+		// Get user to know the USER PHONE NUMBER
+		userCollection, err := util.GetCollection("users")
+		if err != nil {
 			c.JSON(200, gin.H{
-				"message": "User not Found!",
+				"message": "Cannot get user collection",
 			})
 			return
 		}
-	}
-	//Initialize STK Push
-	var (
-		appKey    = util.GoDotEnvVariable("MPESA_APP_KEY")
-		appSecret = util.GoDotEnvVariable("MPESA_APP_SECRET")
-	)
-	svc, err := mpesa.New(appKey, appSecret, mpesa.SANDBOX)
-	if err != nil {
-		log.Println(err)
-	}
-	mres, err := svc.Simulation(mpesa.Express{
-		BusinessShortCode: "174379",
-		Password:          util.GoDotEnvVariable("MPESA_PASSWORD"),
-		Timestamp:         "20200421175555",
-		TransactionType:   "CustomerPayBillOnline",
-		Amount:            1,
-		PartyA:            "254799338805",
-		PartyB:            "174379",
-		PhoneNumber:       "254799338805",
-		CallBackURL:       "https://gin-vepa.herokuapp.com/rcb?id=" + userID + "&paymentid=" + pID, //CallBackHandler
-		AccountReference:  "Vepa",
-		TransactionDesc:   "Vepa Payment",
-	})
-	if err != nil {
-		log.Println("STK Push not sent")
-	}
+		var rUser model.User
+		err = userCollection.FindOne(ctx, filter).Decode(&rUser)
+		if err != nil {
+			if err.Error() == "mongo: no documents in result" {
+				log.Println("User not Found!")
+				c.JSON(200, gin.H{
+					"message": "User not Found!",
+				})
+				return
+			}
+		}
+		//Initialize STK Push
+		var (
+			appKey    = util.GoDotEnvVariable("MPESA_APP_KEY")
+			appSecret = util.GoDotEnvVariable("MPESA_APP_SECRET")
+		)
+		svc, err := mpesa.New(appKey, appSecret, mpesa.SANDBOX)
+		if err != nil {
+			log.Println(err)
+		}
+		mres, err := svc.Simulation(mpesa.Express{
+			BusinessShortCode: "174379",
+			Password:          util.GoDotEnvVariable("MPESA_PASSWORD"),
+			Timestamp:         "20200421175555",
+			TransactionType:   "CustomerPayBillOnline",
+			Amount:            1,
+			PartyA:            "254799338805",
+			PartyB:            "174379",
+			PhoneNumber:       "254799338805",
+			CallBackURL:       "https://gin-vepa.herokuapp.com/rcb?id=" + userID + "&paymentid=" + pID, //CallBackHandler
+			AccountReference:  "Vepa",
+			TransactionDesc:   "Vepa Payment",
+		})
+		if err != nil {
+			log.Println("STK Push not sent")
+		}
 
-	var mresMap map[string]interface{}
-	errm := json.Unmarshal([]byte(mres), &mresMap)
-	if errm != nil {
-		log.Println("Error decoding response body")
-	}
-	rCode := mresMap["ResponseCode"]
-	rCodeString := fmt.Sprintf("%v", rCode)
-	rMessage := mresMap["ResponseDescription"]
-	cMessage := mresMap["CustomerMessage"]
-	//log.Println(cMessage)
-	util.Log(cMessage)
-	// Send error message(notification) if rCode != 0
-	if rCodeString == string('0') {
-		//// Proceed to STK Push
+		var mresMap map[string]interface{}
+		errm := json.Unmarshal([]byte(mres), &mresMap)
+		if errm != nil {
+			log.Println("Error decoding response body")
+		}
+		rCode := mresMap["ResponseCode"]
+		rCodeString := fmt.Sprintf("%v", rCode)
+		rMessage := mresMap["ResponseDescription"]
+		cMessage := mresMap["CustomerMessage"]
+		//log.Println(cMessage)
+		util.Log(cMessage)
+		// Send error message(notification) if rCode != 0
+		if rCodeString == string('0') {
+			//// Proceed to STK Push
+			return
+
+		}
+		rMessageConv := fmt.Sprintf("%v", rMessage)
+		//Send message...
+		util.SendNotifications(rUser.FCMToken, rMessageConv)
 		return
-
 	}
-	rMessageConv := fmt.Sprintf("%v", rMessage)
-	//Send message...
-	util.SendNotifications(rUser.FCMToken, rMessageConv)
+	c.JSON(403, gin.H{
+		"error": "You are not authorized!!!",
+	})
+	c.Abort()
 	return
 }
 
@@ -178,6 +193,7 @@ func CallBackHandler(c *gin.Context) {
 	var item interface{}
 	var mpesaReceiptNumber interface{}
 	var transactionDate interface{}
+
 	//var phoneNumber interface{}
 	var paymentModel model.Payment
 	resultCodeString := fmt.Sprintf("%v", resultCode)
@@ -246,7 +262,7 @@ func CallBackHandler(c *gin.Context) {
 		//------------------------------------------------------------//
 		return
 	}
-	util.Log("Payment no successful")
+	util.Log("Payment not successful")
 	paymentModel.IsSuccessful = false
 	//Send message(In case update was not successful)...
 	util.SendNotifications(result.FCMToken, resultDesc)
@@ -254,6 +270,14 @@ func CallBackHandler(c *gin.Context) {
 
 }
 func UserPaymentsHandler(c *gin.Context) {
+	tokenString := c.GetHeader("Authorization")
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		// Don't forget to validate the alg is what you expect:
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method")
+		}
+		return []byte("secret"), nil
+	})
 	var results []*model.Payment
 	ctx := context.TODO()
 	paymentCollection, err := util.GetCollection("payments")
@@ -263,29 +287,35 @@ func UserPaymentsHandler(c *gin.Context) {
 		})
 		return
 	}
-	userID := c.Param("id")
-	id, _ := primitive.ObjectIDFromHex(userID)
-	filter := bson.M{"userId": id, "isSuccessful": true}
-	cur, err := paymentCollection.Find(ctx, filter)
-	if err != nil {
-		log.Fatal(err)
-	}
-	for cur.Next(ctx) {
-		var elem model.Payment
-		err := cur.Decode(&elem)
+	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		userID := claims["id"].(string)
+		filter := bson.M{"userId": userID, "isSuccessful": true}
+		cur, err := paymentCollection.Find(ctx, filter)
 		if err != nil {
 			log.Fatal(err)
 		}
-		results = append(results, &elem)
+		for cur.Next(ctx) {
+			var elem model.Payment
+			err := cur.Decode(&elem)
+			if err != nil {
+				log.Fatal(err)
+			}
+			results = append(results, &elem)
 
+		}
+		if err := cur.Err(); err != nil {
+			log.Fatal(err)
+		}
+		_ = cur.Close(ctx)
+		c.JSON(200, gin.H{
+			"payments": &results,
+		})
+		return
 	}
-	if err := cur.Err(); err != nil {
-		log.Fatal(err)
-	}
-	_ = cur.Close(ctx)
-	c.JSON(200, gin.H{
-		"payments": &results,
+	c.JSON(403, gin.H{
+		"error": "You are not authorized!!!",
 	})
+	c.Abort()
 	return
 }
 func GetPaidDays(c *gin.Context) {

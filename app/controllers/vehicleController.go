@@ -338,7 +338,7 @@ func CheckIfVehicleIsClampedHandler(c *gin.Context) {
 	vehicleCollection, err := util.GetCollection("vehicles")
 	if err != nil {
 		c.JSON(200, gin.H{
-			"message": "Cannot get vehicle collection",
+			"error": "Cannot get vehicle collection",
 		})
 		return
 	}
@@ -348,12 +348,12 @@ func CheckIfVehicleIsClampedHandler(c *gin.Context) {
 	err = vehicleCollection.FindOne(ctx, vehicleFilter).Decode(&vehicleModel)
 	if err != nil {
 		c.JSON(200, gin.H{
-			"message": "Error Getting Vehicle",
+			"error": "Error Getting Vehicle",
 		})
 		return
 	}
 	c.JSON(200, gin.H{
-		"message": "clamped",
+		"error": "clamped",
 	})
 	return
 }

@@ -30,9 +30,9 @@ func Routes() {
 	r.GET("/isClamped", controllers.ClampedVehicle)
 	r.GET("/isVehicleClamped/:vehicleReg", controllers.CheckIfVehicleIsClampedHandler)
 	//Payment
-	r.POST("/makePayment/:id", controllers.PaymentHandler)
+	r.POST("/makePayment", controllers.PaymentHandler)
 	r.POST("/rcb", controllers.CallBackHandler)
-	r.GET("/userPayments/:id", controllers.UserPaymentsHandler)
+	r.GET("/userPayments", controllers.UserPaymentsHandler)
 	r.GET("/fetchPaidDays/:vehicleReg", controllers.GetPaidDays)
 	r.GET("/verifyPayment/:vehicleReg", controllers.VerificationHandler)
 	r.GET("/unpaidVehicleHistory/vehicleReg", controllers.UnpaidVehicleHistoryHandler)
