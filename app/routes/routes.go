@@ -21,7 +21,7 @@ func Routes() {
 	r.PUT("/editProfile", controllers.EditProfile)
 	r.PUT("/token/:id", controllers.FCMTokenHandler)
 	//Vehicles
-	r.POST("/addVehicle/:id", controllers.AddVehicleHandler)
+	r.POST("/addVehicle", controllers.AddVehicleHandler)
 	r.GET("/vehicle/:vehicleReg", controllers.GetVehicleHandler)
 	r.PUT("/editVehicle/:id", controllers.EditVehicleHandler)
 	r.GET("/userVehicles/:id", controllers.UserVehiclesHandler)

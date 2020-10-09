@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
 	model "github.com/karokojnr/vepa-server-gin/app/models"
 	"github.com/karokojnr/vepa-server-gin/app/util"
@@ -10,7 +11,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"log"
 )
-
 
 func AddVehicleHandler(c *gin.Context) {
 	ctx := context.TODO()
@@ -21,9 +21,15 @@ func AddVehicleHandler(c *gin.Context) {
 		})
 		return
 	}
-	userID := c.Param("id")
-
 	vehicle := model.Vehicle{}
+	tokenString := c.GetHeader("Authorization")
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		// Don't forget to validate the alg is what you expect:
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method")
+		}
+		return []byte("secret"), nil
+	})
 	err = c.Bind(&vehicle)
 	if err != nil {
 		c.JSON(200, gin.H{
@@ -31,29 +37,38 @@ func AddVehicleHandler(c *gin.Context) {
 		})
 		return
 	}
-	var result model.Vehicle
-	err = vehicleCollection.FindOne(ctx, bson.M{"registrationNumber": vehicle.RegistrationNumber}).Decode(&result)
-	if err != nil {
+	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		vehicle.UserID = claims["id"].(string)
 		vehicle.VeicleID = primitive.NewObjectID()
-		vehicle.UserID = userID
 		vehicle.IsWaitingClamp = false
 		vehicle.IsClamped = false
-		_, err = vehicleCollection.InsertOne(ctx, vehicle)
+		var result model.Vehicle
+		err = vehicleCollection.FindOne(ctx, bson.M{"registrationNumber": vehicle.RegistrationNumber}).Decode(&result)
 		if err != nil {
-			c.JSON(403, gin.H{
-				"message": "Error Insert Vehicle",
-			})
-			c.Abort()
-			return
+			if err.Error() == "mongo: no documents in result" {
+				_, err = vehicleCollection.InsertOne(ctx, vehicle)
+				if err != nil {
+					c.JSON(403, gin.H{
+						"message": "Error Insert Vehicle",
+					})
+					c.Abort()
+					return
+				}
+				c.JSON(200, gin.H{
+					"message": "Success Insert Vehicle",
+					"vehicle": &vehicle,
+				})
+				return
+			}
 		}
-		c.JSON(200, gin.H{
-			"message": "Success Insert Vehicle",
-			"vehicle": &vehicle,
+		c.JSON(403, gin.H{
+			"message": "Vehicle Already Exists",
 		})
+		c.Abort()
 		return
 	}
 	c.JSON(403, gin.H{
-		"message": "Vehicle Already Exists",
+		"error": "You are not authorized!!!",
 	})
 	c.Abort()
 	return
