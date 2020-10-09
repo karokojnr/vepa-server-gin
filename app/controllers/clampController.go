@@ -12,6 +12,7 @@ import (
 	"github.com/kyokomi/emoji"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"io/ioutil"
 	"log"
 	"time"
 )
@@ -268,4 +269,146 @@ func ClearClampFeeHandler(c *gin.Context) {
 	return
 }
 
-//TODO: Clamp call back handler
+func ClampCallBackHandler(c *gin.Context) {
+	util.Log("ClampCallback called by Mpesa...")
+	// Update Payment if payment was successful
+	var bd interface{}
+	rbody := c.Request.Body
+	body, err := ioutil.ReadAll(rbody)
+	err = json.Unmarshal(body, &bd)
+	util.Log("Reading request body...")
+	if err != nil {
+		log.Println("Error")
+		util.Log("Error parsing request:", err.Error())
+		return
+	}
+
+	collection, err := util.GetCollection("users")
+	if err != nil {
+		log.Fatal(err)
+	}
+	//extract userId & paymentId
+	userID := c.Request.URL.Query().Get("id")
+	paymentID := c.Request.URL.Query().Get("paymentid")
+	util.Log("Getting data from request...")
+	util.Log("User ID:", userID, " Payment ID:", paymentID)
+	idUser, _ := primitive.ObjectIDFromHex(userID)
+	filter := bson.M{"_id": idUser}
+	var result model.User
+	err = collection.FindOne(context.TODO(), filter).Decode(&result)
+	if err != nil {
+		util.Log("Error fetching user:", err.Error())
+		if err.Error() == "mongo: no documents in result" {
+			c.JSON(404, gin.H{"message": "User account was not found"})
+			c.Abort()
+			return
+		}
+		c.JSON(404, gin.H{"message": "Error fetching user doc"})
+		c.Abort()
+		return
+	}
+	util.Log("User found:", result.Firstname, " Phone No:", result.PhoneNumber)
+
+	util.Log("Reading result body...")
+	resultCode := bd.(map[string]interface{})["Body"].(map[string]interface{})["stkCallback"].(map[string]interface{})["ResultCode"]
+	rBody := bd.(map[string]interface{})["Body"].(map[string]interface{})["stkCallback"].(map[string]interface{})["ResultDesc"]
+	checkoutRequestID := bd.(map[string]interface{})["Body"].(map[string]interface{})["stkCallback"].(map[string]interface{})["CheckoutRequestID"]
+
+	util.Log("Result code:", resultCode, " Result Body:", rBody, " checkoutRequestID:", checkoutRequestID)
+
+	var item interface{}
+	var mpesaReceiptNumber interface{}
+	var transactionDate interface{}
+	//var phoneNumber interface{}
+	var clampPaymentModel model.ClampFee
+	resultCodeString := fmt.Sprintf("%v", resultCode)
+	resultDesc := fmt.Sprintf("%v", rBody)
+
+	var vehicleModel model.Vehicle
+	//-----Update is Waiting Clamp & isClamped in Vehicle-----
+	vehicleCollection, err := util.GetCollection("vehicles")
+	if err != nil {
+		log.Fatal(err)
+	}
+	if resultCodeString == string('0') {
+		item = bd.(map[string]interface{})["Body"].(map[string]interface{})["stkCallback"].(map[string]interface{})["CallbackMetadata"].(map[string]interface{})["Item"]
+		mpesaReceiptNumber = item.([]interface{})[1].(map[string]interface{})["Value"]
+		transactionDate = item.([]interface{})[3].(map[string]interface{})["Value"]
+		//phoneNumber = item.([]interface{})[4].(map[string]interface{})["Value"]
+		// phoneNumber = result.PhoneNumber
+		util.Log("item:", item)
+		util.Log("mpesaReceiptNumber:", mpesaReceiptNumber)
+		util.Log("transactionDate:", transactionDate)
+		util.Log("Fetching payment from db...")
+		clampFeeCollection, err := util.GetCollection("clamps")
+		if err != nil {
+			log.Fatal(err)
+		}
+		pid, _ := primitive.ObjectIDFromHex(paymentID)
+		clampPaymentFilter := bson.M{"_id": pid}
+		clampPaymentUpdate := bson.M{"$set": bson.M{
+			"amount":             1,
+			"mpesaReceiptNumber": mpesaReceiptNumber,
+			"resultCode":         resultCode,
+			"resultDesc":         resultDesc,
+			"transactionDate":    transactionDate,
+			//"phoneNumber":        phoneNumber,
+			"checkoutRequestID": checkoutRequestID,
+			"isSuccessful":      true,
+		}}
+		err = clampFeeCollection.FindOneAndUpdate(context.TODO(), clampPaymentFilter, clampPaymentUpdate).Decode(&clampPaymentModel)
+		if err != nil {
+			util.Log("Error fetching payment:", err.Error())
+			fmt.Printf("error...")
+			return
+
+		}
+		util.Log("Payment updated successfully...")
+		//Send message(Payment was successful)...
+		util.SendNotifications(result.FCMToken, resultDesc)
+		c.JSON(200, gin.H{
+			"message": "Payment Updated",
+			"payment": clampPaymentModel,
+		})
+
+
+		//Set isClamped == false
+		util.Log("Vehicle Reg - ", clampPaymentModel.VehicleReg)
+		vehicleFilter := bson.M{"registrationNumber": clampPaymentModel.VehicleReg}
+		vehicleUpdate := bson.M{"$set": bson.M{
+			"isWaitingClamp": false,
+			"isClamped":      false,
+		}}
+		err = vehicleCollection.FindOneAndUpdate(context.TODO(), vehicleFilter, vehicleUpdate).Decode(&vehicleModel)
+		if err != nil {
+			util.Log("Error updating vehicle:", err.Error())
+			fmt.Printf("error...")
+			return
+
+		}
+		util.Log("Clamp fee cleared...")
+		return
+	}
+	util.Log("Payment not successful")
+	clampPaymentModel.IsSuccessful = false
+	//Set isClamped to true
+	//-----Update is Waiting Clamp & isClamped in Vehicle-----
+	vehicleFilter := bson.M{"registrationNumber": clampPaymentModel.VehicleReg}
+	vehicleUpdate := bson.M{"$set": bson.M{
+		"isWaitingClamp": false,
+		"isClamped":      true,
+	}}
+	var vModel model.Vehicle
+	err = vehicleCollection.FindOneAndUpdate(context.TODO(), vehicleFilter, vehicleUpdate).Decode(&vModel)
+	if err != nil {
+		util.Log("Error updating vehicle:", err.Error())
+		fmt.Printf("error...")
+		return
+
+	}
+	util.Log("vehicle clamp fee not paid")
+	//Send message(In case update was not successful)...
+	util.SendNotifications(result.FCMToken, resultDesc)
+	return
+
+}

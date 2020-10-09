@@ -38,6 +38,7 @@ func Routes() {
 	r.GET("/unpaidVehicleHistory/vehicleReg", controllers.UnpaidVehicleHistoryHandler)
 	r.GET("/clampVehicle/:vehicleReg", controllers.ClampVehicleHandler)
 	r.POST("/clearclampfee/:id", controllers.ClearClampFeeHandler)
+	r.POST("/clamprcb", controllers.ClampCallBackHandler)
 
 	port := util.GetPort()
 	util.Log("Starting app on port 👍 ✓ ⌛ :", port)

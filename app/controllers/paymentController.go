@@ -129,7 +129,6 @@ func CallBackHandler(c *gin.Context) {
 	log.Println("Callback called by M-pesa...")
 	util.Log("Callback called by M-pesa...")
 	log.Println("req body")
-	util.Log(c.Request.Body)
 	ctx := context.TODO()
 	userCollection, err := util.GetCollection("users")
 
