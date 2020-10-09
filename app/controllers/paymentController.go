@@ -130,6 +130,15 @@ func CallBackHandler(c *gin.Context) {
 	util.Log("Callback called by M-pesa...")
 	log.Println("req body")
 	util.Log(c.Request.Body)
+	ctx := context.TODO()
+	userCollection, err := util.GetCollection("users")
+
+	if err != nil {
+		c.JSON(200, gin.H{
+			"message": "Cannot get user collection",
+		})
+		return
+	}
 	var bd interface{}
 	rbody := c.Request.Body
 	body, err := ioutil.ReadAll(rbody)
@@ -140,11 +149,109 @@ func CallBackHandler(c *gin.Context) {
 		util.Log("Error parsing request:", err)
 		return
 	}
+	userID := c.Request.URL.Query().Get("id")
+	paymentID := c.Request.URL.Query().Get("paymentid")
+	util.Log("Getting data from request...")
+	util.Log("User ID:", userID, " Payment ID:", paymentID)
+	idUser, _ := primitive.ObjectIDFromHex(userID)
+	filter := bson.M{"_id": idUser}
+	var result model.User
+	err = userCollection.FindOne(ctx, filter).Decode(&result)
+	if err != nil {
+		util.Log("Error fetching user:", err.Error())
+		if err.Error() == "mongo: no documents in result" {
+			c.JSON(404, gin.H{"message": "User account was not found"})
+			c.Abort()
+			return
+		}
+		c.JSON(404, gin.H{"message": "Error fetching user doc"})
+		c.Abort()
+		return
+	}
+	util.Log("User found:", result.Firstname, " Phone No:", result.PhoneNumber)
+	util.Log("Reading result body...")
 	resultCode := bd.(map[string]interface{})["Body"].(map[string]interface{})["stkCallback"].(map[string]interface{})["ResultCode"]
 	rBody := bd.(map[string]interface{})["Body"].(map[string]interface{})["stkCallback"].(map[string]interface{})["ResultDesc"]
 	checkoutRequestID := bd.(map[string]interface{})["Body"].(map[string]interface{})["stkCallback"].(map[string]interface{})["CheckoutRequestID"]
-	util.Log("Printing c.Request.Body")
+
 	util.Log("Result code:", resultCode, " Result Body:", rBody, " checkoutRequestID:", checkoutRequestID)
+
+	var item interface{}
+	var mpesaReceiptNumber interface{}
+	var transactionDate interface{}
+	//var phoneNumber interface{}
+	var paymentModel model.Payment
+	resultCodeString := fmt.Sprintf("%v", resultCode)
+	resultDesc := fmt.Sprintf("%v", rBody)
+
+	if resultCodeString == string('0') {
+		item = bd.(map[string]interface{})["Body"].(map[string]interface{})["stkCallback"].(map[string]interface{})["CallbackMetadata"].(map[string]interface{})["Item"]
+		mpesaReceiptNumber = item.([]interface{})[1].(map[string]interface{})["Value"]
+		transactionDate = item.([]interface{})[3].(map[string]interface{})["Value"]
+		//phoneNumber = item.([]interface{})[4].(map[string]interface{})["Value"]
+		// phoneNumber = result.PhoneNumber
+		util.Log("item:", item)
+		util.Log("mpesaReceiptNumber:", mpesaReceiptNumber)
+		util.Log("transactionDate:", transactionDate)
+		util.Log("Fetching payment from db...")
+		paymentCollection, err := util.GetCollection("payments")
+		if err != nil {
+			log.Fatal(err)
+		}
+		pid, _ := primitive.ObjectIDFromHex(paymentID)
+		paymentFilter := bson.M{"_id": pid}
+		paymentUpdate := bson.M{"$set": bson.M{
+			"amount":             1,
+			"mpesaReceiptNumber": mpesaReceiptNumber,
+			"resultCode":         resultCode,
+			"resultDesc":         resultDesc,
+			"transactionDate":    transactionDate,
+			//"phoneNumber":        phoneNumber,
+			"checkoutRequestID": checkoutRequestID,
+			"isSuccessful":      true,
+		}}
+		err = paymentCollection.FindOneAndUpdate(ctx, paymentFilter, paymentUpdate).Decode(&paymentModel)
+		if err != nil {
+			util.Log("Error fetching payment:", err.Error())
+			fmt.Printf("error...")
+			return
+
+		}
+		util.Log("Payment updated successfully...")
+		//Send message(Payment was successful)...
+		util.SendNotifications(result.FCMToken, resultDesc)
+		c.JSON(200, gin.H{
+			"message": "Payment Updated",
+			"payment": paymentModel,
+		})
+
+		//-----Update is Waiting Clamp & isClamped in Vehicle-----
+		vehicleCollection, err := util.GetCollection("vehicles")
+		if err != nil {
+			log.Fatal(err)
+		}
+		var vehicleModel model.Vehicle
+		vehicleFilter := bson.M{"registrationNumber": paymentModel.VehicleReg}
+		vehicleUpdate := bson.M{"$set": bson.M{
+			"isWaitingClamp": false,
+			"isClamped":      false,
+		}}
+		err = vehicleCollection.FindOneAndUpdate(ctx, vehicleFilter, vehicleUpdate).Decode(&vehicleModel)
+		if err != nil {
+			util.Log("Error fetching payment:", err.Error())
+			fmt.Printf("error...")
+			return
+
+		}
+		util.Log("vehicle paid")
+		//------------------------------------------------------------//
+		return
+	}
+	util.Log("Payment no successful")
+	paymentModel.IsSuccessful = false
+	//Send message(In case update was not successful)...
+	util.SendNotifications(result.FCMToken, resultDesc)
+	return
 
 }
 func UserPaymentsHandler(c *gin.Context) {
@@ -164,7 +271,7 @@ func UserPaymentsHandler(c *gin.Context) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	for cur.Next(context.TODO()) {
+	for cur.Next(ctx) {
 		var elem model.Payment
 		err := cur.Decode(&elem)
 		if err != nil {
@@ -176,7 +283,7 @@ func UserPaymentsHandler(c *gin.Context) {
 	if err := cur.Err(); err != nil {
 		log.Fatal(err)
 	}
-	_ = cur.Close(context.TODO())
+	_ = cur.Close(ctx)
 	c.JSON(200, gin.H{
 		"payments": &results,
 	})
@@ -198,7 +305,7 @@ func GetPaidDays(c *gin.Context) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	for cur.Next(context.TODO()) {
+	for cur.Next(ctx) {
 		var elem model.Payment
 		err := cur.Decode(&elem)
 		if err != nil {
@@ -209,7 +316,7 @@ func GetPaidDays(c *gin.Context) {
 	if err := cur.Err(); err != nil {
 		log.Fatal(err)
 	}
-	_ = cur.Close(context.TODO())
+	_ = cur.Close(ctx)
 	c.JSON(200, gin.H{
 		"payments": &results,
 	})
@@ -257,7 +364,7 @@ func VerificationHandler(c *gin.Context) {
 	log.Println(payment.Days)
 	// We create filter. If it is unnecessary to sort data for you, you can use bson.M{}
 	filter := bson.M{"vehicleReg": vehicleReg, "days": formatCurrentTime, "isSuccessful": true}
-	err = paymentCollection.FindOne(context.TODO(), filter).Decode(&payment)
+	err = paymentCollection.FindOne(ctx, filter).Decode(&payment)
 	if err != nil {
 		if err.Error() == "mongo: no documents in result" {
 			c.JSON(200, gin.H{
@@ -292,7 +399,7 @@ func UnpaidVehicleHistoryHandler(c *gin.Context) {
 		return
 
 	}
-	for cur.Next(context.TODO()) {
+	for cur.Next(ctx) {
 		var elem model.Payment
 		err := cur.Decode(&elem)
 		if err != nil {
@@ -303,7 +410,7 @@ func UnpaidVehicleHistoryHandler(c *gin.Context) {
 	if err := cur.Err(); err != nil {
 		log.Fatal(err)
 	}
-	_ = cur.Close(context.TODO())
+	_ = cur.Close(ctx)
 	c.JSON(200, gin.H{
 		"payments": &results,
 	})
