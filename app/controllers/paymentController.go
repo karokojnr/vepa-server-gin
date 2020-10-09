@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/AndroidStudyOpenSource/mpesa-api-go"
@@ -9,23 +10,24 @@ import (
 	"github.com/karokojnr/vepa-server-gin/app/util"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"gopkg.in/mgo.v2"
 	"log"
 	"time"
 )
 
-// Static Collection
-const PaymentCollection = "payments"
 
 func PaymentHandler(c *gin.Context) {
-	//db := *MongoConfig()
-
-	db := c.MustGet("db").(*mgo.Database)
-	fmt.Println("MONGO RUNNING...", db)
-	payment := model.Payment{}
+	ctx := context.TODO()
+	paymentCollection, err := util.GetCollection("payments")
+	if err != nil {
+		c.JSON(200, gin.H{
+			"message": "Cannot get payment collection",
+		})
+		return
+	}
+	var payment model.Payment
 	userID := c.Param("id")
 	//id, _ := primitive.ObjectIDFromHex(userID)
-	err := c.Bind(&payment)
+	err = c.Bind(&payment)
 	if err != nil {
 		c.JSON(200, gin.H{
 			"message": "Error Getting Body",
@@ -36,7 +38,7 @@ func PaymentHandler(c *gin.Context) {
 	payment.UserID = userID
 	payment.IsSuccessful = false
 	payment.PaymentID = primitive.NewObjectID()
-	err = db.C(PaymentCollection).Insert(payment)
+	_, err = paymentCollection.InsertOne(ctx, payment)
 	if err != nil {
 		c.JSON(403, gin.H{
 			"message": "Error Inserting Payment",
@@ -56,8 +58,15 @@ func PaymentHandler(c *gin.Context) {
 	id, _ := primitive.ObjectIDFromHex(userID)
 	filter := bson.M{"_id": id}
 	// Get user to know the USER PHONE NUMBER
-	rUser := model.User{}
-	err = db.C(UserCollection).Find(filter).One(&rUser)
+	userCollection, err := util.GetCollection("users")
+	if err != nil {
+		c.JSON(200, gin.H{
+			"message": "Cannot get user collection",
+		})
+		return
+	}
+	var rUser model.User
+	err = userCollection.FindOne(ctx, filter).Decode(&rUser)
 	if err != nil {
 		if err.Error() == "mongo: no documents in result" {
 			log.Println("User not Found!")
@@ -124,58 +133,93 @@ func CallBackHandler(c *gin.Context) {
 
 }
 func UserPaymentsHandler(c *gin.Context) {
-	//db := *MongoConfig()
-
-	db := c.MustGet("db").(*mgo.Database)
-	fmt.Println("MONGO RUNNING: ", db)
-	userID := c.Param("id")
-	id, _ := primitive.ObjectIDFromHex(userID)
-
-	payments := model.Payments{}
-	err := db.C(PaymentCollection).Find(bson.M{"userId": id}).All(&payments)
-
+	var results []*model.Payment
+	ctx := context.TODO()
+	paymentCollection, err := util.GetCollection("payments")
 	if err != nil {
 		c.JSON(200, gin.H{
-			"message": "Error Getting All User Payments",
+			"message": "Cannot get payment collection",
 		})
 		return
 	}
+	userID := c.Param("id")
+	id, _ := primitive.ObjectIDFromHex(userID)
+	filter := bson.M{"userId": id, "isSuccessful": true}
+	cur, err := paymentCollection.Find(ctx, filter)
+	if err != nil {
+		log.Fatal(err)
+	}
+	for cur.Next(context.TODO()) {
+		var elem model.Payment
+		err := cur.Decode(&elem)
+		if err != nil {
+			log.Fatal(err)
+		}
+		results = append(results, &elem)
 
+	}
+	if err := cur.Err(); err != nil {
+		log.Fatal(err)
+	}
+	_ = cur.Close(context.TODO())
 	c.JSON(200, gin.H{
-		"payments": &payments,
+		"payments": &results,
 	})
 	return
 }
 func GetPaidDays(c *gin.Context) {
-	//db := *MongoConfig()
-
-	db := c.MustGet("db").(*mgo.Database)
-	fmt.Println("MONGO RUNNING: ", db)
-	vehicleReg := c.Param("vehicleReg")
-	payments := model.Payments{}
-	err := db.C(PaymentCollection).Find(bson.M{"vehicleReg": vehicleReg, "isSuccessful": true}).All(&payments)
-
+	ctx := context.TODO()
+	paymentCollection, err := util.GetCollection("payments")
 	if err != nil {
 		c.JSON(200, gin.H{
-			"message": "Error Getting All User Payments",
+			"message": "Cannot get payment collection",
 		})
 		return
 	}
-
+	vehicleReg := c.Param("vehicleReg")
+	var results []*model.Payment
+	filter := bson.M{"vehicleReg": vehicleReg, "isSuccessful": true}
+	cur, err := paymentCollection.Find(ctx, filter)
+	if err != nil {
+		log.Fatal(err)
+	}
+	for cur.Next(context.TODO()) {
+		var elem model.Payment
+		err := cur.Decode(&elem)
+		if err != nil {
+			log.Fatal(err)
+		}
+		results = append(results, &elem)
+	}
+	if err := cur.Err(); err != nil {
+		log.Fatal(err)
+	}
+	_ = cur.Close(context.TODO())
 	c.JSON(200, gin.H{
-		"payments": &payments,
+		"payments": &results,
 	})
 	return
 }
 func VerificationHandler(c *gin.Context) {
-	//db := *MongoConfig()
-
-	db := c.MustGet("db").(*mgo.Database)
-	fmt.Println("MONGO RUNNING: ", db)
+	ctx := context.TODO()
+	paymentCollection, err := util.GetCollection("payments")
+	if err != nil {
+		c.JSON(200, gin.H{
+			"message": "Cannot get payment collection",
+		})
+		return
+	}
+	vehicleCollection, err := util.GetCollection("vehicles")
+	if err != nil {
+		c.JSON(200, gin.H{
+			"message": "Cannot get vehicle collection",
+		})
+		return
+	}
 	vehicleReg := c.Param("vehicleReg")
-	vehicle := model.Vehicle{}
-	payment := model.Payment{}
-	err := db.C(VehicleCollection).Find(bson.M{"registrationNumber": vehicleReg}).One(&vehicle)
+	var payment model.Payment
+	var vehicle model.Vehicle
+	err = vehicleCollection.FindOne(ctx, bson.M{"registrationNumber": vehicleReg}).Decode(&vehicle)
 	if err != nil {
 		if err.Error() == "mongo: no documents in result" {
 			c.JSON(200, gin.H{
@@ -183,6 +227,7 @@ func VerificationHandler(c *gin.Context) {
 			})
 			return
 		}
+
 	}
 	currentTime := time.Now().Local()
 	formatCurrentTime := currentTime.Format("2006-01-02")
@@ -197,7 +242,7 @@ func VerificationHandler(c *gin.Context) {
 	log.Println(payment.Days)
 	// We create filter. If it is unnecessary to sort data for you, you can use bson.M{}
 	filter := bson.M{"vehicleReg": vehicleReg, "days": formatCurrentTime, "isSuccessful": true}
-	err = db.C(PaymentCollection).Find(filter).One(&payment)
+	err = paymentCollection.FindOne(context.TODO(), filter).Decode(&payment)
 	if err != nil {
 		if err.Error() == "mongo: no documents in result" {
 			c.JSON(200, gin.H{
@@ -212,24 +257,40 @@ func VerificationHandler(c *gin.Context) {
 	return
 }
 func UnpaidVehicleHistoryHandler(c *gin.Context) {
-	//db := *MongoConfig()
-
-	db := c.MustGet("db").(*mgo.Database)
-	fmt.Println("MONGO RUNNING: ", db)
+	ctx := context.TODO()
+	paymentCollection, err := util.GetCollection("payments")
+	if err != nil {
+		c.JSON(200, gin.H{
+			"message": "Cannot get payment collection",
+		})
+		return
+	}
 	vehicleReg := c.Param("vehicleReg")
 
-	payments := model.Payments{}
-	err := db.C(PaymentCollection).Find(bson.M{"vehicleReg": vehicleReg}).All(&payments)
+	var results []*model.Payment
+	filter := bson.M{"vehicleReg": vehicleReg}
+	cur, err := paymentCollection.Find(ctx, filter)
 	if err != nil {
 		c.JSON(200, gin.H{
 			"message": "Error Getting All Clamped Vehicles",
 		})
 		return
-	}
 
+	}
+	for cur.Next(context.TODO()) {
+		var elem model.Payment
+		err := cur.Decode(&elem)
+		if err != nil {
+			log.Fatal(err)
+		}
+		results = append(results, &elem)
+	}
+	if err := cur.Err(); err != nil {
+		log.Fatal(err)
+	}
+	_ = cur.Close(context.TODO())
 	c.JSON(200, gin.H{
-		"payments": &payments,
+		"payments": &results,
 	})
 	return
-
 }

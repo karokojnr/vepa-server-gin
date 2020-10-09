@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/AndroidStudyOpenSource/africastalking-go/sms"
@@ -11,22 +12,37 @@ import (
 	"github.com/kyokomi/emoji"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"gopkg.in/mgo.v2"
 	"log"
 	"time"
 )
 
-const ClampFeeCollection = "clamps"
-
 func ClampVehicleHandler(c *gin.Context) {
-	//db := *MongoConfig()
-	db := c.MustGet("db").(*mgo.Database)
-
-	fmt.Println("MONGO RUNNING: ", db)
+	ctx := context.TODO()
+	paymentCollection, err := util.GetCollection("payments")
+	if err != nil {
+		c.JSON(200, gin.H{
+			"message": "Cannot get clamp fee collection",
+		})
+		return
+	}
+	userCollection, err := util.GetCollection("users")
+	if err != nil {
+		c.JSON(200, gin.H{
+			"message": "Cannot get vehicle collection",
+		})
+		return
+	}
+	vehicleCollection, err := util.GetCollection("vehicles")
+	if err != nil {
+		c.JSON(200, gin.H{
+			"message": "Cannot get vehicle collection",
+		})
+		return
+	}
 	vehicleReg := c.Param("vehicleReg")
-	vehicle := model.Vehicle{}
+	var vehicle model.Vehicle
 	filter := bson.M{"registrationNumber": vehicleReg}
-	err := db.C(VehicleCollection).Find(filter).One(&vehicle)
+	err = vehicleCollection.FindOne(ctx, filter).Decode(&vehicle)
 	if err != nil {
 		log.Println(err)
 	}
@@ -35,8 +51,8 @@ func ClampVehicleHandler(c *gin.Context) {
 	userID, _ := primitive.ObjectIDFromHex(uID)
 	vID := vehicle.VeicleID
 
-	user := model.User{}
-	err = db.C(UserCollection).Find(bson.M{"_id": userID}).One(&user)
+	var user model.User
+	err = userCollection.FindOne(ctx, bson.M{"_id": userID}).Decode(&user)
 	if err != nil {
 		log.Println(err)
 	}
@@ -54,7 +70,8 @@ func ClampVehicleHandler(c *gin.Context) {
 	//Call the Gateway, and pass the constants here!
 	smsService := sms.NewService(username, apiKey, env)
 	plus := "+"
-	vehicleModel := model.Vehicle{}
+	var vehicleModel model.Vehicle
+	err = vehicleCollection.FindOne(ctx, bson.M{"registrationNumber": vehicleReg}).Decode(&vehicleModel)
 	if vehicleModel.IsWaitingClamp == true || vehicleModel.IsClamped == true {
 		util.Log("vehicle is already  clamped")
 		c.JSON(200, gin.H{
@@ -74,7 +91,7 @@ func ClampVehicleHandler(c *gin.Context) {
 		vehicleUpdate := bson.M{"$set": bson.M{
 			"isWaitingClamp": true,
 		}}
-		err = db.C(VehicleCollection).Update(vehicleFilter, vehicleUpdate)
+		err = vehicleCollection.FindOneAndUpdate(context.TODO(), vehicleFilter, vehicleUpdate).Decode(&vehicleModel)
 		if err != nil {
 			util.Log("Error updating payment:", err.Error())
 			fmt.Printf("error...")
@@ -95,12 +112,12 @@ func ClampVehicleHandler(c *gin.Context) {
 	util.Log("Clamp timer ended" + timerMessage)
 	//Timer complete
 
-	paymentModel := model.Payment{}
-	err = db.C(VehicleCollection).Find(bson.M{"registrationNumber": vehicleReg}).One(&vehicle)
+	var paymentModel model.Payment
+	err = vehicleCollection.FindOne(ctx, bson.M{"registrationNumber": vehicleReg}).Decode(&vehicleModel)
 	currentTime := time.Now().Local()
 	formatCurrentTime := currentTime.Format("2006-01-02")
 	paymentFilter := bson.M{"vehicleReg": vehicleModel.RegistrationNumber, "days": formatCurrentTime, "isSuccessful": true}
-	err = db.C(PaymentCollection).Find(paymentFilter).One(&paymentModel)
+	err = paymentCollection.FindOne(ctx, paymentFilter).Decode(&paymentModel)
 	if err != nil {
 		log.Println(err)
 		if vehicleModel.IsClamped == false {
@@ -109,7 +126,7 @@ func ClampVehicleHandler(c *gin.Context) {
 				"isClamped":      true,
 				"isWaitingClamp": false,
 			}}
-			err = db.C(VehicleCollection).Update(vehicleClampFilter, vehicleClampUpdate)
+			err = vehicleCollection.FindOneAndUpdate(context.TODO(), vehicleClampFilter, vehicleClampUpdate).Decode(&vehicleModel)
 			if err != nil {
 				util.Log("Error fetching payment:", err.Error())
 				fmt.Printf("error...")
@@ -130,7 +147,7 @@ func ClampVehicleHandler(c *gin.Context) {
 		"isClamped":      false,
 		"isWaitingClamp": false,
 	}}
-	err = db.C(VehicleCollection).Update(vFilter, vUpdate)
+	err = vehicleCollection.FindOneAndUpdate(context.TODO(), vFilter, vUpdate).Decode(&vehicleModel)
 	if err != nil {
 		util.Log("Error updating payment:", err.Error())
 		fmt.Printf("error...")
@@ -145,12 +162,16 @@ func ClampVehicleHandler(c *gin.Context) {
 }
 
 func ClearClampFee(c *gin.Context) {
-	//db := *MongoConfig()
-	db := c.MustGet("db").(*mgo.Database)
-
-	fmt.Println("MONGO RUNNING: ", db)
-	clampFee := model.ClampFee{}
-	err := c.Bind(&clampFee)
+	ctx := context.TODO()
+	clampFeeCollection, err := util.GetCollection("clamps")
+	if err != nil {
+		c.JSON(200, gin.H{
+			"message": "Cannot get clamp fee collection",
+		})
+		return
+	}
+	var clampFee model.ClampFee
+	err = c.Bind(&clampFee)
 	if err != nil {
 		c.JSON(200, gin.H{
 			"message": "Error Getting Body",
@@ -162,7 +183,7 @@ func ClearClampFee(c *gin.Context) {
 	clampFee.UserID = userID
 	clampFee.IsSuccessful = false
 	clampFee.ClampFeeID = primitive.NewObjectID()
-	err = db.C(ClampFeeCollection).Insert(clampFee)
+	_, err = clampFeeCollection.InsertOne(ctx, clampFee)
 	if err != nil {
 		c.JSON(403, gin.H{
 			"message": "Error Inserting Clamp Fee Payment",
@@ -183,8 +204,15 @@ func ClearClampFee(c *gin.Context) {
 	id, _ := primitive.ObjectIDFromHex(userID)
 	filter := bson.M{"_id": id}
 	// Get user to know the USER PHONE NUMBER
-	rUser := model.User{}
-	err = db.C(UserCollection).Find(filter).One(&rUser)
+	userCollection, err := util.GetCollection("users")
+	if err != nil {
+		c.JSON(200, gin.H{
+			"message": "Cannot get user collection",
+		})
+		return
+	}
+	var rUser model.User
+	err = userCollection.FindOne(context.TODO(), filter).Decode(&rUser)
 	if err != nil {
 		if err.Error() == "mongo: no documents in result" {
 			log.Println("User not Found!")

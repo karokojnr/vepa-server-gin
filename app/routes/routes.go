@@ -12,7 +12,6 @@ import (
 func Routes() {
 	r := gin.Default()
 	// Middlewares
-	r.Use(middlewares.Connect)
 	r.Use(middlewares.ErrorHandler)
 	//Routes
 	r.POST("/register", controllers.RegisterHandler)
@@ -23,10 +22,10 @@ func Routes() {
 	r.POST("/addVehicle/:id", controllers.AddVehicleHandler)
 	r.GET("/vehicle/:vehicleReg", controllers.GetVehicleHandler)
 	r.PUT("/editVehicle/:id", controllers.EditVehicleHandler)
-	//r.GET("/userVehicles/:id", controllers.UserVehiclesHandler)
-	//r.DELETE("/deleteVehicle/:id", controllers.DeleteVehicleHandler)
-	//r.GET("/isWaitingClamp", controllers.VehiclesWaitingClamp)
-	//r.GET("/isClamped", controllers.ClampedVehicle)
+	r.GET("/userVehicles/:id", controllers.UserVehiclesHandler)
+	r.DELETE("/deleteVehicle/:id", controllers.DeleteVehicleHandler)
+	r.GET("/isWaitingClamp", controllers.VehiclesWaitingClamp)
+	r.GET("/isClamped", controllers.ClampedVehicle)
 	//r.POST("/makePayment/:id", controllers.PaymentHandler)
 
 	port := util.GetPort()

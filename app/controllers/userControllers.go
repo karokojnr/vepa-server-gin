@@ -1,36 +1,29 @@
 package controllers
 
 import (
+	"context"
 	"fmt"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
-	"github.com/karokojnr/vepa-server-gin/app/config"
+	model "github.com/karokojnr/vepa-server-gin/app/models"
+	"github.com/karokojnr/vepa-server-gin/app/util"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/crypto/bcrypt"
-	"gopkg.in/mgo.v2"
-
-	model "github.com/karokojnr/vepa-server-gin/app/models"
 )
 
-// Static Collection
-const UserCollection = "users"
-
-// Get DB from Mongo Config
-func MongoConfig() *mgo.Database {
-	db, err := config.GetMongoDB()
-	if err != nil {
-		fmt.Println(err)
-	}
-	return db
-}
-
 func RegisterHandler(c *gin.Context) {
-	////db := *MongoConfig()
-	db := c.MustGet("db").(*mgo.Database)
-	fmt.Println("MONGO RUNNING...", db)
+	ctx := context.TODO()
+	userCollection, err := util.GetCollection("users")
+
+	if err != nil {
+		c.JSON(200, gin.H{
+			"message": "Cannot get user collection",
+		})
+		return
+	}
 	user := model.User{}
-	err := c.Bind(&user)
+	err = c.Bind(&user)
 	if err != nil {
 		c.JSON(200, gin.H{
 			"message": "Error Get Body",
@@ -38,9 +31,8 @@ func RegisterHandler(c *gin.Context) {
 		return
 	}
 
-	result := model.User{}
-
-	err = db.C(UserCollection).Find(bson.M{"email": user.Email}).One(&result)
+	var result model.User
+	err = userCollection.FindOne(ctx, bson.M{"email": user.Email}).Decode(&result)
 	if err != nil {
 
 		hash, err := bcrypt.GenerateFromPassword([]byte(user.Password), 5)
@@ -54,8 +46,7 @@ func RegisterHandler(c *gin.Context) {
 		}
 		user.Password = string(hash)
 		user.ID = primitive.NewObjectID()
-
-		err = db.C(UserCollection).Insert(user)
+		_, err = userCollection.InsertOne(ctx, &user)
 
 		if err != nil {
 			c.JSON(403, gin.H{
@@ -95,12 +86,17 @@ func RegisterHandler(c *gin.Context) {
 	return
 }
 func LoginHandler(c *gin.Context) {
-	//db := *MongoConfig()
-	db := c.MustGet("db").(*mgo.Database)
+	ctx := context.TODO()
+	userCollection, err := util.GetCollection("users")
 
-	fmt.Println("MONGO RUNNING...", db)
+	if err != nil {
+		c.JSON(200, gin.H{
+			"message": "Cannot get user collection",
+		})
+		return
+	}
 	user := model.User{}
-	err := c.Bind(&user)
+	err = c.Bind(&user)
 	if err != nil {
 		c.JSON(200, gin.H{
 			"message": "Error Get Body",
@@ -108,7 +104,7 @@ func LoginHandler(c *gin.Context) {
 		return
 	}
 	var result model.User
-	err = db.C(UserCollection).Find(bson.M{"email": user.Email}).One(&result)
+	err = userCollection.FindOne(ctx, bson.M{"email": user.Email}).Decode(&result)
 	if err != nil {
 		c.JSON(404, gin.H{"message": "User account was not found"})
 		c.Abort()
@@ -145,17 +141,20 @@ func LoginHandler(c *gin.Context) {
 
 }
 func ProfileHandler(c *gin.Context) {
-	//db := *MongoConfig()
-	db := c.MustGet("db").(*mgo.Database)
+	ctx := context.TODO()
+	userCollection, err := util.GetCollection("users")
 
-	fmt.Println("MONGO RUNNING...", db)
+	if err != nil {
+		c.JSON(200, gin.H{
+			"message": "Cannot get user collection",
+		})
+		return
+	}
 
 	user := model.User{}
 	userID := c.Param("id")
 	id, _ := primitive.ObjectIDFromHex(userID)
-
-	err := db.C(UserCollection).Find(bson.M{"_id": id}).One(&user)
-
+	err = userCollection.FindOne(ctx, bson.M{"_id": id}).Decode(&user)
 	if err != nil {
 		c.JSON(200, gin.H{
 			"message": "Error Getting User",
@@ -169,15 +168,20 @@ func ProfileHandler(c *gin.Context) {
 	return
 }
 func EditProfile(c *gin.Context) {
-	//db := *MongoConfig()
-	db := c.MustGet("db").(*mgo.Database)
+	ctx := context.TODO()
+	userCollection, err := util.GetCollection("users")
 
-	fmt.Println("MONGO RUNNING...", db)
+	if err != nil {
+		c.JSON(200, gin.H{
+			"message": "Cannot get user collection",
+		})
+		return
+	}
 
 	user := model.User{}
 	userID := c.Param("id")
 	id, _ := primitive.ObjectIDFromHex(userID)
-	err := c.Bind(&user)
+	err = c.Bind(&user)
 
 	if err != nil {
 		c.JSON(200, gin.H{
@@ -193,7 +197,8 @@ func EditProfile(c *gin.Context) {
 		"idNumber":    user.IDNumber,
 		"phoneNumber": user.PhoneNumber,
 	}}
-	err = db.C(UserCollection).Update(bson.M{"_id": &id}, update)
+	var result model.User
+	err = userCollection.FindOneAndUpdate(ctx, bson.M{"_id": id}, update).Decode(&result)
 	if err != nil {
 		c.JSON(200, gin.H{
 			"message": "Error Updating User",
@@ -208,15 +213,20 @@ func EditProfile(c *gin.Context) {
 	return
 }
 func FCMTokenHandler(c *gin.Context) {
-	//db := *MongoConfig()
-	db := c.MustGet("db").(*mgo.Database)
+	ctx := context.TODO()
+	userCollection, err := util.GetCollection("users")
 
-	fmt.Println("MONGO RUNNING...", db)
+	if err != nil {
+		c.JSON(200, gin.H{
+			"message": "Cannot get user collection",
+		})
+		return
+	}
 
 	user := model.User{}
 	userID := c.Param("id")
 	id, _ := primitive.ObjectIDFromHex(userID)
-	err := c.Bind(&user)
+	err = c.Bind(&user)
 
 	if err != nil {
 		c.JSON(200, gin.H{
@@ -226,7 +236,7 @@ func FCMTokenHandler(c *gin.Context) {
 	}
 	filter := bson.M{"_id": id}
 	update := bson.M{"$set": bson.M{"fcmtoken": user.FCMToken}}
-	err = db.C(UserCollection).Update(filter, update)
+	_, err = userCollection.UpdateOne(ctx, filter, update)
 	if err != nil {
 		c.JSON(200, gin.H{
 			"message": "Error Updating FCMToken",
