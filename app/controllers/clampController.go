@@ -325,7 +325,7 @@ func ClampCallBackHandler(c *gin.Context) {
 		mpesaReceiptNumber = item.([]interface{})[1].(map[string]interface{})["Value"]
 		transactionDate = item.([]interface{})[3].(map[string]interface{})["Value"]
 		//phoneNumber = item.([]interface{})[4].(map[string]interface{})["Value"]
-		// phoneNumber = result.PhoneNumber
+		phoneNumber := result.PhoneNumber
 		util.Log("item:", item)
 		util.Log("mpesaReceiptNumber:", mpesaReceiptNumber)
 		util.Log("transactionDate:", transactionDate)
@@ -342,7 +342,7 @@ func ClampCallBackHandler(c *gin.Context) {
 			"resultCode":         resultCode,
 			"resultDesc":         resultDesc,
 			"transactionDate":    transactionDate,
-			//"phoneNumber":        phoneNumber,
+			"phoneNumber":        phoneNumber,
 			"checkoutRequestID": checkoutRequestID,
 			"isSuccessful":      true,
 		}}
@@ -378,7 +378,7 @@ func ClampCallBackHandler(c *gin.Context) {
 		util.Log("Clamp fee cleared...")
 		return
 	}
-	util.Log("Payment not successful")
+	util.Log("Payment not successful...")
 	clampPaymentModel.IsSuccessful = false
 	//Set isClamped to true
 	//-----Update is Waiting Clamp & isClamped in Vehicle-----
