@@ -11,9 +11,9 @@ type Payment struct {
 	ResultCode         interface{}        `bson:"resultCode" json:"resultCode"`
 	ResultDesc         string             `bson:"resultDesc" json:"resultDesc"`
 	TransactionDate    int                `bson:"transactionDate" json:"transactionDate"`
-	// PhoneNumber        int                `bson:"phoneNumber" json:"phoneNumber"`
-	CheckoutRequestID string `bson:"checkoutRequestID" json:"checkoutRequestID"`
-	IsSuccessful      bool   `bson:"isSuccessful" json:"isSuccessful"`
-	UserID            string `bson:"userId" json:"userId"`
+	PhoneNumber        string             `bson:"phoneNumber" json:"phoneNumber"`
+	CheckoutRequestID  string             `bson:"checkoutRequestID" json:"checkoutRequestID"`
+	IsSuccessful       bool               `bson:"isSuccessful" json:"isSuccessful"`
+	UserID             string             `bson:"userId" json:"userId"`
 }
 type Payments []Payment

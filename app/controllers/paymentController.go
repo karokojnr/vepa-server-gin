@@ -204,7 +204,7 @@ func CallBackHandler(c *gin.Context) {
 		mpesaReceiptNumber = item.([]interface{})[1].(map[string]interface{})["Value"]
 		transactionDate = item.([]interface{})[3].(map[string]interface{})["Value"]
 		//phoneNumber = item.([]interface{})[4].(map[string]interface{})["Value"]
-		// phoneNumber = result.PhoneNumber
+		phoneNumber := "+" + result.PhoneNumber
 		util.Log("item:", item)
 		util.Log("mpesaReceiptNumber:", mpesaReceiptNumber)
 		util.Log("transactionDate:", transactionDate)
@@ -221,9 +221,9 @@ func CallBackHandler(c *gin.Context) {
 			"resultCode":         resultCode,
 			"resultDesc":         resultDesc,
 			"transactionDate":    transactionDate,
-			//"phoneNumber":        phoneNumber,
-			"checkoutRequestID": checkoutRequestID,
-			"isSuccessful":      true,
+			"phoneNumber":        phoneNumber,
+			"checkoutRequestID":  checkoutRequestID,
+			"isSuccessful":       true,
 		}}
 		err = paymentCollection.FindOneAndUpdate(ctx, paymentFilter, paymentUpdate).Decode(&paymentModel)
 		if err != nil {
