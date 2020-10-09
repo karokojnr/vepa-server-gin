@@ -128,7 +128,7 @@ func CallBackHandler(c *gin.Context) {
 	log.Println("Callback called by M-pesa...")
 	util.Log("Callback called by M-pesa...")
 	log.Println("req body")
-	log.Println(c.Request.Body)
+	util.Log(c.Request.Body)
 
 	util.Log("Reading request body...")
 	//var bd interface{}
