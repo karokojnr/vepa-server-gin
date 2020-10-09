@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="BranchesTreeState">
+    <expand>
+      <path>
+        <item name="ROOT" type="e8cecc67:BranchNodeDescriptor" />
+        <item name="LOCAL_ROOT" type="e8cecc67:BranchNodeDescriptor" />
+      </path>
+      <path>
+        <item name="ROOT" type="e8cecc67:BranchNodeDescriptor" />
+        <item name="REMOTE_ROOT" type="e8cecc67:BranchNodeDescriptor" />
+      </path>
+    </expand>
+    <select />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="f097b510-51bd-4ed2-984b-886a7d680178" name="Default Changelist" comment="" />
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Go File" />
+      </list>
+    </option>
+  </component>
+  <component name="GOROOT" path="$USER_HOME$/go" />
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="ProjectId" id="1iaSlBHhZV8cxRDOqnfhhHQwb5b" />
+  <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">
+    <property name="DefaultGoTemplateProperty" value="Go File" />
+    <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
+    <property name="WebServerToolWindowFactoryState" value="false" />
+    <property name="go.import.settings.migrated" value="true" />
+    <property name="go.sdk.automatically.set" value="true" />
+    <property name="go.tried.to.enable.integration.vgo.integrator" value="true" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/vepa.go" />
+    <property name="settings.editor.selected.configurable" value="preferences.lookFeel" />
+  </component>
+  <component name="RecentsManager">
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/app" />
+    </key>
+  </component>
+  <component name="RunManager" selected="Go Build.go build github.com/karokojnr/vepa-server-gin">
+    <configuration name="go build github.com/karokojnr/vepa-server-gin" type="GoApplicationRunConfiguration" factoryName="Go Application" temporary="true" nameIsGenerated="true">
+      <module name="vepa-server-gin" />
+      <working_directory value="$PROJECT_DIR$" />
+      <kind value="PACKAGE" />
+      <filePath value="$PROJECT_DIR$/vepa.go" />
+      <package value="github.com/karokojnr/vepa-server-gin" />
+      <directory value="$PROJECT_DIR$" />
+      <method v="2" />
+    </configuration>
+    <configuration name="go build vepa-server-gin" type="GoApplicationRunConfiguration" factoryName="Go Application" nameIsGenerated="true">
+      <module name="vepa-server-gin" />
+      <working_directory value="$PROJECT_DIR$" />
+      <go_parameters value="-i" />
+      <EXTENSION ID="net.ashald.envfile">
+        <option name="IS_ENABLED" value="false" />
+        <option name="IS_SUBST" value="false" />
+        <option name="IS_PATH_MACRO_SUPPORTED" value="false" />
+        <option name="IS_IGNORE_MISSING_FILES" value="false" />
+        <option name="IS_ENABLE_EXPERIMENTAL_INTEGRATIONS" value="false" />
+        <ENTRIES>
+          <ENTRY IS_ENABLED="true" PARSER="runconfig" />
+        </ENTRIES>
+      </EXTENSION>
+      <kind value="FILE" />
+      <filePath value="$PROJECT_DIR$/../vepa-server-gin|$PROJECT_DIR$/vepa.go" />
+      <package value="github.com/karokojnr/vepa-server-gin" />
+      <directory value="$PROJECT_DIR$" />
+      <method v="2" />
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Go Build.go build github.com/karokojnr/vepa-server-gin" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
+    <option name="oldMeFiltersMigrated" value="true" />
+  </component>
+  <component name="WindowStateProjectService">
+    <state x="483" y="185" key="#Go_Modules" timestamp="1602145020848">
+      <screen x="0" y="0" width="1366" height="708" />
+    </state>
+    <state x="483" y="185" key="#Go_Modules/0.0.1366.708@0.0.1366.708" timestamp="1602145020848" />
+    <state x="147" y="0" width="1071" height="708" key="#com.intellij.execution.impl.EditConfigurationsDialog" timestamp="1602147091919">
+      <screen x="0" y="0" width="1366" height="708" />
+    </state>
+    <state x="147" y="0" width="1071" height="708" key="#com.intellij.execution.impl.EditConfigurationsDialog/0.0.1366.708@0.0.1366.708" timestamp="1602147091919" />
+    <state x="471" y="107" key="FileChooserDialogImpl" timestamp="1602147108744">
+      <screen x="0" y="0" width="1366" height="708" />
+    </state>
+    <state x="471" y="107" key="FileChooserDialogImpl/0.0.1366.708@0.0.1366.708" timestamp="1602147108744" />
+    <state width="1320" height="410" key="GridCell.Tab.0.bottom" timestamp="1602239702050">
+      <screen x="0" y="0" width="1366" height="708" />
+    </state>
+    <state width="1320" height="410" key="GridCell.Tab.0.bottom/0.0.1366.708@0.0.1366.708" timestamp="1602239702049" />
+    <state width="1320" height="410" key="GridCell.Tab.0.center" timestamp="1602239702049">
+      <screen x="0" y="0" width="1366" height="708" />
+    </state>
+    <state width="1320" height="410" key="GridCell.Tab.0.center/0.0.1366.708@0.0.1366.708" timestamp="1602239702049" />
+    <state width="1320" height="410" key="GridCell.Tab.0.left" timestamp="1602239702049">
+      <screen x="0" y="0" width="1366" height="708" />
+    </state>
+    <state width="1320" height="410" key="GridCell.Tab.0.left/0.0.1366.708@0.0.1366.708" timestamp="1602239702049" />
+    <state width="1320" height="410" key="GridCell.Tab.0.right" timestamp="1602239702049">
+      <screen x="0" y="0" width="1366" height="708" />
+    </state>
+    <state width="1320" height="410" key="GridCell.Tab.0.right/0.0.1366.708@0.0.1366.708" timestamp="1602239702049" />
+    <state x="513" y="105" key="refactoring.ChangeSignatureDialog" timestamp="1602192221121">
+      <screen x="0" y="0" width="1366" height="708" />
+    </state>
+    <state x="513" y="105" key="refactoring.ChangeSignatureDialog/0.0.1366.708@0.0.1366.708" timestamp="1602192221121" />
+  </component>
+</project>
