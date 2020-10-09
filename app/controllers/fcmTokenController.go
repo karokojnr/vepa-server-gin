@@ -32,7 +32,6 @@ func SaveAttendantsFCM(c *gin.Context) {
 		})
 		return
 	}
-
 	c.JSON(200, gin.H{
 		"message": "Success Updating FCMToken",
 		//"user":    &user,

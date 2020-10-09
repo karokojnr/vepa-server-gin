@@ -18,7 +18,7 @@ func RegisterHandler(c *gin.Context) {
 
 	if err != nil {
 		c.JSON(200, gin.H{
-			"message": "Cannot get user collection",
+			"error": "Cannot get user collection",
 		})
 		return
 	}
@@ -26,7 +26,7 @@ func RegisterHandler(c *gin.Context) {
 	err = c.Bind(&user)
 	if err != nil {
 		c.JSON(200, gin.H{
-			"message": "Error Get Body",
+			"error": "Error Getting Body",
 		})
 		return
 	}
@@ -40,7 +40,7 @@ func RegisterHandler(c *gin.Context) {
 		if err != nil {
 
 			c.JSON(200, gin.H{
-				"message": "Error While Hashing Password, Try Again Later",
+				"error": "Error While Hashing Password, Try Again Later",
 			})
 			return
 		}
@@ -50,7 +50,7 @@ func RegisterHandler(c *gin.Context) {
 
 		if err != nil {
 			c.JSON(403, gin.H{
-				"message": "Error Insert User",
+				"error": "Error Inserting User",
 			})
 			c.Abort()
 			return
@@ -66,7 +66,7 @@ func RegisterHandler(c *gin.Context) {
 		fmt.Println("Expires in ... seconds: ")
 		fmt.Println(exp)
 		if err != nil {
-			c.JSON(403, gin.H{"message": "rror while generating token,Try again"})
+			c.JSON(403, gin.H{"error": "Error while generating token,Try again"})
 			c.Abort()
 			return
 		}
@@ -76,12 +76,12 @@ func RegisterHandler(c *gin.Context) {
 		user.Exp = exp
 
 		c.JSON(200, gin.H{
-			"message": "Success Insert User",
+			"message": "Success Insertting User",
 			"user":    &user,
 		})
 		return
 	}
-	c.JSON(403, gin.H{"message": "Email is already in use"})
+	c.JSON(403, gin.H{"error": "Email already exists!!!"})
 	c.Abort()
 	return
 }
@@ -91,7 +91,7 @@ func LoginHandler(c *gin.Context) {
 
 	if err != nil {
 		c.JSON(200, gin.H{
-			"message": "Cannot get user collection",
+			"error": "Cannot get user collection",
 		})
 		return
 	}
@@ -99,20 +99,20 @@ func LoginHandler(c *gin.Context) {
 	err = c.Bind(&user)
 	if err != nil {
 		c.JSON(200, gin.H{
-			"message": "Error Get Body",
+			"error": "Error Get Body",
 		})
 		return
 	}
 	var result model.User
 	err = userCollection.FindOne(ctx, bson.M{"email": user.Email}).Decode(&result)
 	if err != nil {
-		c.JSON(404, gin.H{"message": "User account was not found"})
+		c.JSON(404, gin.H{"error": "User account was not found"})
 		c.Abort()
 		return
 	}
 	err = bcrypt.CompareHashAndPassword([]byte(result.Password), []byte(user.Password))
 	if err != nil {
-		c.JSON(404, gin.H{"message": "Invalid password"})
+		c.JSON(404, gin.H{"error": "Invalid password"})
 		c.Abort()
 		return
 	}
@@ -126,7 +126,7 @@ func LoginHandler(c *gin.Context) {
 	fmt.Println("Expires in ... seconds: ")
 	fmt.Println(exp)
 	if err != nil {
-		c.JSON(404, gin.H{"message": "Error while generating token"})
+		c.JSON(404, gin.H{"error": "Error while generating token"})
 		c.Abort()
 		return
 	}
@@ -154,16 +154,29 @@ func ProfileHandler(c *gin.Context) {
 	user := model.User{}
 	userID := c.Param("id")
 	id, _ := primitive.ObjectIDFromHex(userID)
-	err = userCollection.FindOne(ctx, bson.M{"_id": id}).Decode(&user)
-	if err != nil {
+	tokenString := c.GetHeader("Authorization")
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		// Don't forget to validate the alg is what you expect:
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method")
+		}
+		return []byte("secret"), nil
+	})
+	if _, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		err = userCollection.FindOne(ctx, bson.M{"_id": id}).Decode(&user)
+		if err != nil {
+			c.JSON(200, gin.H{
+				"message": "Error Getting User",
+			})
+			return
+		}
 		c.JSON(200, gin.H{
-			"message": "Error Getting User",
+			"user": &user,
 		})
 		return
 	}
-
-	c.JSON(200, gin.H{
-		"user": &user,
+	c.JSON(403, gin.H{
+		"error": "You are not Authorized!",
 	})
 	return
 }
@@ -177,38 +190,49 @@ func EditProfile(c *gin.Context) {
 		})
 		return
 	}
+	tokenString := c.GetHeader("Authorization")
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		// Don't forget to validate the alg is what you expect:
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method")
+		}
+		return []byte("secret"), nil
+	})
+	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		id := claims["id"].(string)
+		userID, _ := primitive.ObjectIDFromHex(id)
+		user := model.User{}
+		err = c.Bind(&user)
+		if err != nil {
+			c.JSON(200, gin.H{
+				"message": "Error Getting Body",
+			})
+			return
+		}
+		update := bson.M{"$set": bson.M{
+			"firstName":   user.Firstname,
+			"lastName":    user.Lastname,
+			"email":       user.Email,
+			"idNumber":    user.IDNumber,
+			"phoneNumber": user.PhoneNumber,
+		}}
+		var result model.User
+		err = userCollection.FindOneAndUpdate(ctx, bson.M{"_id": userID}, update).Decode(&result)
+		if err != nil {
+			c.JSON(200, gin.H{
+				"error": "Error Updating User",
+			})
+			return
+		}
 
-	user := model.User{}
-	userID := c.Param("id")
-	id, _ := primitive.ObjectIDFromHex(userID)
-	err = c.Bind(&user)
-
-	if err != nil {
 		c.JSON(200, gin.H{
-			"message": "Error Getting Body",
+			"message": "Success Updating User",
+			"user":    &user,
 		})
 		return
 	}
-	user.ID = id
-	update := bson.M{"$set": bson.M{
-		"firstName":   user.Firstname,
-		"lastName":    user.Lastname,
-		"email":       user.Email,
-		"idNumber":    user.IDNumber,
-		"phoneNumber": user.PhoneNumber,
-	}}
-	var result model.User
-	err = userCollection.FindOneAndUpdate(ctx, bson.M{"_id": id}, update).Decode(&result)
-	if err != nil {
-		c.JSON(200, gin.H{
-			"message": "Error Updating User",
-		})
-		return
-	}
-
-	c.JSON(200, gin.H{
-		"message": "Success Updating User",
-		"user":    &user,
+	c.JSON(403, gin.H{
+		"error": "You are not Authorized!",
 	})
 	return
 }

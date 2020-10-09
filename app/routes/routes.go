@@ -17,8 +17,8 @@ func Routes() {
 	//Users
 	r.POST("/register", controllers.RegisterHandler)
 	r.POST("/login", controllers.LoginHandler)
-	r.GET("/user/:id", controllers.ProfileHandler)
-	r.PUT("/updateProfile/:id", controllers.EditProfile)
+	r.GET("/profile/:id", controllers.ProfileHandler)
+	r.PUT("/editProfile", controllers.EditProfile)
 	r.PUT("/token/:id", controllers.FCMTokenHandler)
 	//Vehicles
 	r.POST("/addVehicle/:id", controllers.AddVehicleHandler)
