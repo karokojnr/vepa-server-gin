@@ -352,7 +352,7 @@ func CheckIfVehicleIsClampedHandler(c *gin.Context) {
 		})
 		return
 	}
-	c.JSON(200, gin.H{
+	c.JSON(403, gin.H{
 		"error": "clamped",
 	})
 	return
