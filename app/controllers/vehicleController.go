@@ -347,13 +347,15 @@ func CheckIfVehicleIsClampedHandler(c *gin.Context) {
 	vehicleFilter := bson.M{"registrationNumber": vehicleReg, "isClamped": true}
 	err = vehicleCollection.FindOne(ctx, vehicleFilter).Decode(&vehicleModel)
 	if err != nil {
-		c.JSON(200, gin.H{
-			"error": "Error Getting Vehicle",
+		util.SendJson(c, gin.H{
+			"vehicle": vehicleModel,
 		})
 		return
 	}
-	c.JSON(403, gin.H{
-		"error": "clamped",
-	})
+	var error string = "clamped"
+	util.SendError(c, error)
+	//c.JSON(403, gin.H{
+	//	"error": "clamped",
+	//})
 	return
 }
